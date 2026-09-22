@@ -15,7 +15,7 @@
   color: inherit;
   background: none;
   border: 0;
-  cursor: pointer;
+  cursor: var(--cursor-clickable);
   /* No radius, no shadow: tiles are pieces of one sheet, not floating cards. */
   outline-offset: -2px;
 }

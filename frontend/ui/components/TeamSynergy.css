@@ -20,7 +20,7 @@
   background: var(--ink-200);
   border: var(--hair) solid var(--ink-400);
   border-radius: 50%;
-  cursor: pointer;
+  cursor: var(--cursor-clickable);
   transition:
     color 120ms ease,
     background 120ms ease,
@@ -126,7 +126,7 @@
   color: var(--paper);
   background: var(--ink-300);
   border: var(--hair) solid var(--ink-400);
-  cursor: pointer;
+  cursor: var(--cursor-clickable);
 }
 
 .syn-close:hover {

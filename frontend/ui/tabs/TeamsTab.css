@@ -72,7 +72,7 @@
   padding: 0;
   background: none;
   border: 0;
-  cursor: pointer;
+  cursor: var(--cursor-clickable);
 }
 
 .team-card-hit:focus-visible {
@@ -234,7 +234,7 @@
   text-align: left;
   background: none;
   border: 0;
-  cursor: pointer;
+  cursor: var(--cursor-clickable);
 }
 
 .teams-farming-toggle:focus-visible {

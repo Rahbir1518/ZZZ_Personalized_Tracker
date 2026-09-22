@@ -34,7 +34,7 @@
   text-align: left;
   background: none;
   border: 0;
-  cursor: pointer;
+  cursor: var(--cursor-clickable);
 }
 
 .asearch-item.is-active {
