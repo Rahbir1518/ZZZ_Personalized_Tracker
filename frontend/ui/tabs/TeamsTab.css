@@ -1,69 +1,83 @@
 .teams {
   display: grid;
   grid-template-rows: auto 1fr;
-  gap: 14px;
+  gap: 16px;
   height: 100%;
   min-height: 0;
 }
 
+/* --- control bar -------------------------------------------------------- */
+
 .teams-subtabs {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
-.teams-search {
-  flex: 1 1 200px;
-  max-width: 300px;
-  padding: 8px 12px;
-  font: inherit;
-  font-size: 0.9rem;
-  background: var(--panel);
-  border: var(--ink-bold) solid var(--ink);
-  border-radius: var(--radius);
+.teams-subtabs .btn {
+  font-size: 0.86rem;
 }
 
-.teams-search:focus-visible {
-  outline: var(--ink-bold) solid var(--zap);
-  outline-offset: 2px;
+.teams-search {
+  flex: 1 1 220px;
+  max-width: 320px;
 }
 
 .teams-search-count {
-  font-family: var(--font-display);
-  letter-spacing: 0.6px;
-  font-size: 0.9rem;
-  color: var(--ink-soft);
-}
-
-.teams-subtabs .ink-button {
-  font-size: 0.95rem;
-}
-
-.teams-subtabs .is-active {
-  background: var(--pow);
-  transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0 var(--ink);
+  font-family: var(--font-tech);
+  font-weight: 700;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .teams-body {
   overflow-y: auto;
   min-height: 0;
-  padding: 4px 10px 24px 4px;
+  padding-right: 6px;
+  padding-bottom: 24px;
 }
 
 .teams-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: var(--gutter);
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 14px;
   align-items: start;
 }
 
-/* --- team card -------------------------------------------------------- */
+/* --- team card ---------------------------------------------------------- */
 
 .team-card {
+  position: relative;
   display: grid;
   gap: 10px;
+  transition: border-color 120ms ease;
+}
+
+.team-card:hover {
+  border-color: var(--muted);
+}
+
+/**
+ * A transparent hit area covering the card. Using an overlay button rather
+ * than wrapping the card keeps the portraits' own titles and the heading
+ * markup intact, and keeps the card keyboard-reachable as one control.
+ */
+.team-card-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.team-card-hit:focus-visible {
+  outline: var(--edge) solid var(--gold);
+  outline-offset: -3px;
 }
 
 .team-card-head {
@@ -73,42 +87,29 @@
 }
 
 .team-card-title {
-  margin: 0;
-  font-size: 1.15rem;
-  line-height: 1.2;
   flex: 1;
-}
-
-.team-chip {
-  flex: 0 0 auto;
-  padding: 3px 10px;
-  font-family: var(--font-display);
-  font-size: 0.8rem;
-  letter-spacing: 0.6px;
-  border: var(--ink-hair) solid var(--ink);
-  border-radius: 999px;
-}
-
-.team-chip-ready {
-  background: var(--good);
-}
-
-.team-chip-missing {
-  background: var(--warn);
+  margin: 0;
+  font-size: 1.2rem;
+  line-height: 1.15;
+  letter-spacing: 0.03em;
+  color: var(--paper);
 }
 
 .team-card-note {
   margin: 0;
-  font-size: 0.8rem;
-  color: var(--ink-soft);
+  font-family: var(--font-tech);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
-/* --- member portraits ------------------------------------------------- */
+/* --- member portraits --------------------------------------------------- */
 
 .team-portraits {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -117,21 +118,20 @@
 .team-portrait {
   display: grid;
   justify-items: center;
-  gap: 3px;
-  width: 68px;
+  gap: 4px;
+  width: 92px;
 }
 
 .team-portrait-art {
   position: relative;
   display: grid;
   place-items: center;
-  width: 60px;
-  height: 60px;
+  width: 88px;
+  height: 96px;
   overflow: hidden;
-  background: var(--paper-deep);
-  border: var(--ink-bold) solid var(--ink);
-  border-radius: 10px;
-  box-shadow: var(--shadow-pop-sm);
+  background: var(--ink-300);
+  border: var(--hair) solid var(--ink-400);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
 }
 
 .team-portrait-art img {
@@ -142,14 +142,18 @@
 }
 
 .team-portrait-initials {
-  font-size: 1.2rem;
-  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--ink-400);
 }
 
 .team-portrait-name {
-  font-size: 0.7rem;
-  line-height: 1.15;
+  font-family: var(--font-tech);
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
   text-align: center;
+  color: var(--paper-dim);
   /* Long names must not widen the tile and break the row. */
   overflow: hidden;
   text-overflow: ellipsis;
@@ -158,59 +162,154 @@
 }
 
 .team-portrait.is-owned .team-portrait-art {
-  border-color: var(--pow-deep);
-  box-shadow: 3px 3px 0 var(--pow-deep);
+  border-color: var(--gold);
 }
 
-/* Agents you do not have read as ghosts, matching the roster grid. */
+/* Agents you do not have read as ghosts, matching the roster. */
 .team-portrait.is-missing .team-portrait-art {
   border-style: dashed;
-  filter: grayscale(1) contrast(0.9);
-  opacity: 0.55;
+}
+
+.team-portrait.is-missing .team-portrait-art img {
+  filter: grayscale(1) brightness(0.45);
 }
 
 .team-portrait.is-missing .team-portrait-name {
-  color: var(--ink-soft);
+  color: var(--muted);
 }
+
+/* --- readiness / hint --------------------------------------------------- */
 
 .team-card-readiness {
   display: grid;
   gap: 4px;
 }
 
-.team-card-label {
-  font-size: 0.72rem;
-  color: var(--ink-soft);
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
+.team-card-hint {
+  margin: 0;
+  padding: 7px 10px;
+  background: var(--ink-200);
+  border-left: 2px solid var(--gold);
+  font-size: 0.78rem;
+  color: var(--paper-dim);
 }
 
-/* --- farming panel ---------------------------------------------------- */
+/* --- farming panel ------------------------------------------------------ */
 
 .teams-suggested {
   display: grid;
-  gap: var(--gutter);
+  gap: 14px;
 }
 
 .teams-farming {
-  background: var(--pow);
+  --cut: 14px;
 }
 
 .teams-farming-title {
-  margin: 0 0 8px;
-  font-size: 1.3rem;
-  letter-spacing: 1px;
+  margin: 0 0 10px;
+  font-size: 1.2rem;
+  letter-spacing: 0.1em;
+  color: var(--gold);
 }
 
-.teams-farming-list {
-  margin: 0;
-  padding-left: 20px;
+/* --- farm rows ---------------------------------------------------------- */
+
+.farm-list {
   display: grid;
-  gap: 6px;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: farm;
 }
 
-.teams-farming-reason {
+.farm-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 11px 0;
+}
+
+.farm-row + .farm-row {
+  border-top: var(--hair) solid var(--ink-200);
+}
+
+.farm-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.farm-text strong {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.16rem;
+  letter-spacing: 0.03em;
+  color: var(--paper);
+}
+
+.farm-reason {
+  font-family: var(--font-tech);
+  font-size: 0.76rem;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+/* Who the target serves. Un-owned agents are shown dimmed rather than hidden:
+   that is what makes a set read as worth farming toward. */
+.farm-users {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 7px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Big enough to recognise a face at a glance - the row is answering "who is
+   this for?", and 30px squares of dimmed art answered it badly. */
+.farm-user {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  overflow: hidden;
+  background: var(--ink-300);
+  border: var(--hair) solid var(--ink-400);
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+}
+
+.farm-user img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   display: block;
-  font-size: 0.8rem;
-  color: var(--ink-soft);
+}
+
+.farm-user-blank {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.farm-user.is-owned {
+  border-color: var(--gold);
+}
+
+.farm-user.is-owned::after {
+  /* A gold corner tick, so ownership survives being seen out of the corner of
+     the eye rather than depending on a 1px border colour. Top-right, because
+     the frame's cut corners are top-left and bottom-right. */
+  content: '';
+  position: absolute;
+  inset: 0 0 auto auto;
+  width: 0;
+  height: 0;
+  border-right: 9px solid var(--gold);
+  border-bottom: 9px solid transparent;
+}
+
+.farm-user.is-missing img {
+  filter: grayscale(1) brightness(0.4);
 }

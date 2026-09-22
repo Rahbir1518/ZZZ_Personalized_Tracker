@@ -5,7 +5,7 @@ authenticates with their own HoYoLAB account, the app pulls their full agent
 roster (with W-Engines, Drive Discs, mindscape levels), fetches recommended
 builds/teams from Prydwen, and cross-references the two to tell the user which
 recommended teams they can field, how close their builds are to recommendations,
-and what to farm next. Comic-book visual style.
+and what to farm next. Styled after ZZZ's own in-game UI.
 
 > **Context for the assistant:** This is a personal hobby project, non-commercial,
 > hosted on the owner's public GitHub. Anyone can clone/download and run it
@@ -35,7 +35,7 @@ and what to farm next. Comic-book visual style.
    - suggested farming priorities.
 5. A **Sync button** in the app that refetches the newest data from every
    source in one action (see *Sync* below).
-6. Comic-book UI.
+6. In-game-style ZZZ UI.
 
 The join/analysis in (4) is the actual point of the project. Data fetching is
 plumbing; spend effort on the analysis layer and the UI, not on reinventing the
@@ -170,18 +170,53 @@ Support manual cookies first (fastest to stand up), add QR later.
 
 ---
 
-## Comic-book UI direction
+## UI direction — in-game ZZZ style
 
-Core styling, achievable in pure CSS/SVG:
-- Thick black ink outlines; hard offset box-shadows for a printed-panel feel.
-- Ben-Day / halftone dot texture (SVG filter or repeating radial-gradient).
-- Panel-grid layout with fat gutters; slight rotation on panels.
-- Speech-bubble shapes for callouts and modals; burst/star shapes ("POW") for
-  highlights like "team ready" or "build complete".
-- Pair a punchy display face for headers with a clean body font.
-- All agent art is 2D, pulled at runtime from the metadata source
-  (`hakushin-py` portrait/icon URLs). No 3D assets — do not try to recreate the
-  in-game 3D renders.
+> **Superseded 2026-09-22.** This project originally specified a comic-book
+> look (halftone, speech bubbles, "POW" bursts, cream paper). That has been
+> replaced wholesale: the app now follows the visual language of ZZZ's own
+> in-game menus. Nothing of the comic treatment remains.
+
+Near-black, high-contrast, editorial. The interface is black/grey/white;
+**character art supplies the colour** and yellow is an accent used sparingly,
+never as a fill.
+
+**Palette**
+
+| Role | Values |
+| --- | --- |
+| Base | `#050505` `#0B0B0C` `#151516` `#242426` |
+| UI | `#E8E8E5` `#C9C9C5` `#FFFFFF` |
+| Accent | `#F2C230` `#D9A91E` |
+
+**Rules that hold the look together**
+
+- **Hard geometry.** Corners are cut with `clip-path`, edges are 1px hairlines.
+  No rounded cards, no glassmorphism, no soft drop shadows, no floating panels.
+- **Condensed uppercase type**, tightly tracked. Barlow Condensed for display,
+  Barlow Semi Condensed for technical labels. Metadata reads as game HUD
+  (`LV.60`, `M6`, `ENG ✓`, `SET 75%`), never as spreadsheet columns.
+- **Layered background** — charcoal wash, diagonal hatching, halftone dots,
+  grain, oversized cropped rings and a faint cropped wordmark. All kept far
+  below the artwork in contrast so it never competes with the roster.
+- **Diagonal composition.** The roster is skewed into a trapezoid so it reads
+  as a printed sheet of cards set down at an angle.
+- Small graphic marks throughout: corner brackets, ticks, coordinates, arrows.
+
+**Accessibility constraints that override the aesthetic**
+
+- Each tile **counter-skews its own face**, so portraits and text stay upright
+  and legible inside the tilted grid. The skew is composition, never applied to
+  anything a person has to read.
+- `prefers-reduced-motion` flattens the skew to `0deg` as well as disabling
+  transitions, so the composition stops shifting under the cursor.
+- Below 900px the skew is dropped entirely rather than squeezing slanted rows.
+
+**Navigation** is a vertical rail welded to the right edge — an off-white slab
+with an angled inner edge, hatch texture and bottom-to-top display type. It is
+an in-game side tab, not a sidebar.
+
+**Agent art** is 2D and fetched at runtime; no 3D assets and nothing committed.
 
 ### App structure — two top-level tabs
 
@@ -195,7 +230,7 @@ Core styling, achievable in pure CSS/SVG:
     halftone "ghost" tiles. The catalog comes from `hakushin-py`; ownership is
     the join against the HoYoLAB roster. This makes "what am I missing" legible
     directly in the grid and feeds the Suggested-teams view.
-- **Clicking a tile opens the comic-book modal** for that agent (see below).
+- **Clicking a tile opens the detail overlay** for that agent (see below).
 
 **2. Teams tab** — contains two sub-tabs:
 - **My Teams** — teams currently fieldable from the owned roster (agents the user
@@ -204,17 +239,16 @@ Core styling, achievable in pure CSS/SVG:
   data with Prydwen recommendations: which meta teams the user can build toward,
   what's missing, and suggested farming priorities.
 
-### The character modal (comic "panel burst" transition)
+### The character detail overlay
 
-Clicking an agent tile should feel like a comic panel bursting open:
-- A **speech bubble emerges from the clicked tile**, expands to fill the whole
-  screen, and the agent's information then **fades in** inside it. On close, it
+Clicking an agent tile should feel like that card enlarging, not a dialog
+appearing centre-screen:
+- A panel **animates from the clicked tile's real `DOMRect`** out to full
+  screen, and the agent's information then **fades in** inside it. On close it
   collapses back toward the originating tile.
-- Implementation: animate a shape from the tile's position/size to a fullscreen
-  panel using the tile as the transform origin (CSS transform + clip-path, or an
-  SVG / Framer-Motion transition) so it reads as "emerging from there." Gate the
-  content fade-in until the expand finishes. Provide a simple fade fallback under
-  `prefers-reduced-motion`.
+- Implementation: Framer Motion animating the captured tile rect to a
+  fullscreen one, so it reads as "emerging from there". Gate the content
+  fade-in until the expand finishes. Plain fade under `prefers-reduced-motion`.
 
 **Modal content (owned agent):**
 - Current build from the account: equipped W-Engine, Drive Discs and their
@@ -222,9 +256,11 @@ Clicking an agent tile should feel like a comic panel bursting open:
 - Prydwen recommendations for that agent: best W-Engines, best disc sets, main-stat
   and substat priorities, recommended teams.
 - The comparison: build-gap readout (disc-set match, substat gaps, W-Engine match)
-  and which recommended teams the agent belongs to. Surface highlights as in-panel
-  speech-bubble callouts and burst badges (e.g. "BUILD COMPLETE", or a callout
-  listing missing pieces).
+  and which recommended teams the agent belongs to. Highlights surface as chips
+  and a callout block (e.g. "BUILD COMPLETE", or the missing pieces).
+- **Every W-Engine and disc set is shown with its icon**, on both the equipped
+  and the recommended side, so the two columns can be compared at a glance.
+  Prydwen supplies these icons; they are already captured by the parser.
 
 ---
 
@@ -263,8 +299,7 @@ the app — no per-panel reload buttons.
   a politeness/quota measure, **not** a workaround for Prydwen's Cloudflare
   challenge, which is fingerprint-based and fires on the first request
   regardless of volume.
-- Comic-styled: the button reads as an action burst, and completion pops a
-  "SYNCED!" burst badge.
+- Completion shows a brief "Synced" chip; a partial run says so instead.
 
 **Endpoints:** `POST /sync` starts a run and returns a run id (refused with
 `quota_exhausted` when the daily cap is spent); `GET /sync/status`
@@ -278,8 +313,8 @@ streams/reports per-source progress; `POST /sync/cancel` aborts the run.
    fetch and print agents to a terminal / return them from one sidecar endpoint.
    This proves the whole spine.
 2. **Roster grid.** Map roster data to names/icons via `hakushin-py`; render the
-   Characters-tab roster grid in the comic style.
-3. **Character modal.** Add the comic "panel burst" modal on tile click; pull one
+   Characters-tab roster grid in the in-game style.
+3. **Character detail.** Add the tile-origin expand overlay on click; pull one
    agent's Prydwen `page-data.json`, cache it to SQLite, and show that agent's
    build vs. the recommendation inside the modal.
 4. **Teams tab.** Build the two sub-tabs — My Teams (fieldable from the owned

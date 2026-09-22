@@ -1,14 +1,15 @@
 /**
- * App shell: auth gate, the two top-level tabs, and the sync header.
+ * App shell: layered backdrop, the roster stage, and a vertical navigation
+ * rail welded to the right edge in place of a conventional sidebar.
  *
- * Data flow is deliberately simple — the sidecar owns all state and the
- * renderer refetches after a sync finishes. No client-side cache to keep
- * coherent, which for a single-user desktop app is the right trade.
+ * The sidecar owns all state; the renderer refetches after a sync finishes.
+ * No client cache to keep coherent, which is the right trade for a
+ * single-user desktop app.
  */
 
 import { useCallback, useEffect, useState } from 'react'
 import { ApiError, api } from './api'
-import { ErrorStrip } from './components/ComicBits'
+import { ErrorStrip, Tech } from './components/Ui'
 import { LoginPanel } from './components/LoginPanel'
 import { SyncButton } from './components/SyncButton'
 import { CharactersTab } from './tabs/CharactersTab'
@@ -18,6 +19,28 @@ import './App.css'
 
 type Tab = 'characters' | 'teams'
 type Phase = 'starting' | 'needs-login' | 'ready' | 'sidecar-failed'
+
+const TABS: { id: Tab; label: string; code: string }[] = [
+  { id: 'characters', label: 'Agents', code: 'R-01' },
+  { id: 'teams', label: 'Teams', code: 'R-02' }
+]
+
+/** The layered, low-contrast background. Purely decorative. */
+function Backdrop({ word }: { word: string }): React.JSX.Element {
+  return (
+    <>
+      <div className="backdrop" />
+      <div className="backdrop-marks" aria-hidden="true">
+        <span className="ring-a" />
+        <span className="ring-b" />
+        <span className="slab" />
+      </div>
+      <div className="backdrop-word display" aria-hidden="true">
+        {word}
+      </div>
+    </>
+  )
+}
 
 export function App(): React.JSX.Element {
   const [phase, setPhase] = useState<Phase>('starting')
@@ -41,7 +64,6 @@ export function App(): React.JSX.Element {
     }
   }, [])
 
-  // Startup: if we have stored cookies, sign in with them silently.
   useEffect(() => {
     void (async () => {
       try {
@@ -61,7 +83,6 @@ export function App(): React.JSX.Element {
         setPhase('ready')
         await loadData()
       } catch {
-        // Stored cookies are stale or rejected — fall back to the paste form.
         setPhase('needs-login')
       }
     })()
@@ -70,7 +91,8 @@ export function App(): React.JSX.Element {
   if (phase === 'starting') {
     return (
       <div className="boot">
-        <p className="display-outline boot-text">Warming up…</p>
+        <Backdrop word="ZZZ" />
+        <p className="boot-text display">Booting</p>
       </div>
     )
   }
@@ -78,12 +100,13 @@ export function App(): React.JSX.Element {
   if (phase === 'sidecar-failed') {
     return (
       <div className="boot">
-        <div className="boot-failed">
-          <h1 className="display-outline">Local service did not start</h1>
+        <Backdrop word="ERR" />
+        <div className="boot-fail panel">
+          <h1 className="display boot-fail-title">Local service offline</h1>
           <p>
-            The Python sidecar failed to launch, so there is nothing to talk to. In development run{' '}
+            The Python sidecar did not start, so there is nothing to talk to. In development run{' '}
             <code>npm run sidecar:install</code> first. If you installed the packaged app, please
-            file an issue with the log from the terminal.
+            file an issue with the terminal log.
           </p>
         </div>
       </div>
@@ -92,57 +115,73 @@ export function App(): React.JSX.Element {
 
   if (phase === 'needs-login') {
     return (
-      <LoginPanel
-        onAuthenticated={() => {
-          setPhase('ready')
-          void loadData()
-        }}
-      />
+      <>
+        <Backdrop word="AUTH" />
+        <LoginPanel
+          onAuthenticated={() => {
+            setPhase('ready')
+            void loadData()
+          }}
+        />
+      </>
     )
   }
 
+  const active = TABS.find((t) => t.id === tab) ?? TABS[0]
+
   return (
-    <div className="app">
-      <header className="app-header">
-        <h1 className="display-outline app-title">ZZZ Team Tracker</h1>
+    <div className="shell">
+      <Backdrop word={tab === 'characters' ? 'AGENTS' : 'TEAMS'} />
 
-        <nav className="app-tabs" role="tablist" aria-label="Main sections">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'characters'}
-            className={`ink-button ${tab === 'characters' ? 'is-active' : 'ink-button-quiet'}`}
-            onClick={() => setTab('characters')}
-          >
-            Characters
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'teams'}
-            className={`ink-button ${tab === 'teams' ? 'is-active' : 'ink-button-quiet'}`}
-            onClick={() => setTab('teams')}
-          >
-            Teams
-          </button>
-        </nav>
+      <div className="shell-stage">
+        <header className="topbar">
+          <div className="brand">
+            <span className="brand-mark" aria-hidden="true" />
+            <div className="brand-text">
+              <span className="display brand-name">ZZZ Tracker</span>
+              <Tech>Agent progression</Tech>
+            </div>
+          </div>
 
-        <SyncButton onFinished={() => void loadData()} />
-      </header>
+          <SyncButton onFinished={() => void loadData()} />
+        </header>
 
-      {error !== null && (
-        <div className="app-error">
-          <ErrorStrip message={error.message} hint={error.hint} onRetry={() => void loadData()} />
-        </div>
-      )}
-
-      <main className="app-main">
-        {tab === 'characters' ? (
-          <CharactersTab agents={agents} gaps={analysis?.build_gaps ?? []} loading={loading} />
-        ) : (
-          <TeamsTab analysis={analysis} loading={loading} />
+        {error !== null && (
+          <div className="shell-error">
+            <ErrorStrip message={error.message} hint={error.hint} onRetry={() => void loadData()} />
+          </div>
         )}
-      </main>
+
+        <main className="shell-main">
+          {tab === 'characters' ? (
+            <CharactersTab agents={agents} gaps={analysis?.build_gaps ?? []} loading={loading} />
+          ) : (
+            <TeamsTab analysis={analysis} agents={agents} loading={loading} />
+          )}
+        </main>
+      </div>
+
+      {/* Vertical rail: an in-game menu tab, not a sidebar. */}
+      <nav className="rail" role="tablist" aria-label="Sections">
+        <span className="rail-code tech">{active?.code}</span>
+
+        {TABS.map(({ id, label }) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={tab === id}
+            className={`rail-tab ${tab === id ? 'is-active' : ''}`}
+            onClick={() => setTab(id)}
+          >
+            <span className="rail-label display">{label}</span>
+          </button>
+        ))}
+
+        <span className="rail-cursor" aria-hidden="true">
+          ›
+        </span>
+      </nav>
     </div>
   )
 }

@@ -20,8 +20,17 @@ export default defineConfig({
   renderer: {
     root: 'frontend/ui',
     resolve: {
-      alias: { '@': resolve('frontend/ui') }
+      alias: {
+        '@': resolve('frontend/ui'),
+        // Shipped art the UI imports. Vite hashes these into out/renderer, so
+        // they travel in the asar with everything else - `resources/` itself is
+        // only copied by electron-builder for the sidecar binary.
+        '@resources': resolve('resources')
+      }
     },
+    // The renderer root is frontend/ui, so resources/ is outside it and the dev
+    // server would refuse to serve from there without this.
+    server: { fs: { allow: [resolve('.')] } },
     build: {
       rollupOptions: { input: { index: resolve('frontend/ui/index.html') } }
     },

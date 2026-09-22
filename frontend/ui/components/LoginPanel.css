@@ -1,23 +1,28 @@
 .login-screen {
+  position: relative;
+  z-index: 1;
   display: grid;
   place-items: center;
-  height: 100%;
+  height: 100vh;
   padding: 24px;
   overflow-y: auto;
 }
 
 .login-panel {
-  width: min(560px, 100%);
+  width: min(540px, 100%);
+  --cut: 18px;
 }
 
 .login-title {
-  margin: 0 0 10px;
-  font-size: 2rem;
+  margin: 0 0 8px;
+  font-size: 2.1rem;
+  color: var(--white);
 }
 
 .login-intro {
-  margin: 0 0 18px;
-  color: var(--ink-soft);
+  margin: 0 0 20px;
+  font-size: 0.88rem;
+  color: var(--muted);
 }
 
 .login-form {
@@ -30,32 +35,30 @@
   gap: 5px;
 }
 
-.login-field span {
-  font-family: var(--font-display);
-  letter-spacing: 0.8px;
-  font-size: 0.95rem;
-}
-
 .login-field input {
   font-family: ui-monospace, 'Cascadia Mono', monospace;
-  font-size: 0.9rem;
+  font-size: 0.86rem;
   padding: 9px 12px;
-  color: var(--ink);
-  background: var(--paper);
-  border: var(--ink-hair) solid var(--ink);
-  border-radius: 8px;
+  color: var(--paper);
+  background: var(--ink-000);
+  border: var(--hair) solid var(--ink-400);
 }
 
 .login-field input:focus-visible {
-  outline: var(--ink-bold) solid var(--zap);
-  outline-offset: 2px;
+  outline: none;
+  border-color: var(--gold);
 }
 
 .login-remember {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  color: var(--paper-dim);
+}
+
+.login-remember input {
+  accent-color: var(--gold);
 }
 
 .login-error {
@@ -63,64 +66,83 @@
   gap: 6px;
   margin-top: 16px;
   padding: 12px 14px;
-  background: var(--danger);
-  color: var(--panel);
-  border: var(--ink-bold) solid var(--ink);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-pop-sm);
+  background: var(--ink-200);
+  border: var(--hair) solid color-mix(in srgb, var(--alert) 45%, var(--ink-400));
+  border-left: 3px solid var(--alert);
 }
 
-/* The "battle record is off" case is a fixable setting, not a failure —
-   colour it as guidance so it reads differently from bad cookies. */
+/* A disabled battle record is a fixable setting, not a rejection — colour it
+   as guidance so it reads differently from bad cookies. */
 .login-error-fixable {
-  background: var(--warn);
-  color: var(--ink);
+  border-color: color-mix(in srgb, var(--gold) 50%, var(--ink-400));
+  border-left-color: var(--gold);
+}
+
+.login-error strong {
+  font-size: 1rem;
+  letter-spacing: 0.14em;
+  color: var(--alert);
+}
+
+.login-error-fixable strong {
+  color: var(--gold);
 }
 
 .login-error p {
   margin: 0;
+  font-size: 0.85rem;
+  color: var(--paper);
 }
 
 .login-error-hint {
-  font-size: 0.86rem;
-  opacity: 0.92;
+  color: var(--muted) !important;
+  font-size: 0.78rem !important;
 }
 
-.login-error .ink-button {
+.login-error .btn {
   justify-self: start;
   margin-top: 4px;
 }
 
 .login-help {
-  margin-top: 18px;
-  font-size: 0.88rem;
-  color: var(--ink-soft);
+  margin-top: 20px;
+  font-size: 0.85rem;
+  color: var(--muted);
 }
 
 .login-help summary {
   font-family: var(--font-display);
-  letter-spacing: 0.6px;
-  color: var(--ink);
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--paper-dim);
   cursor: pointer;
 }
 
+.login-help summary:hover {
+  color: var(--gold);
+}
+
 .login-help ol {
-  margin: 8px 0;
+  margin: 10px 0;
   padding-left: 20px;
+}
+
+.login-help a {
+  color: var(--gold);
 }
 
 .login-help code,
 .login-help kbd {
   padding: 1px 5px;
-  background: var(--paper-deep);
-  border: 1px solid var(--ink);
-  border-radius: 4px;
   font-size: 0.85em;
+  color: var(--gold);
+  background: var(--ink-300);
 }
 
 .login-risk {
-  padding: 8px 10px;
-  background: var(--paper-deep);
-  border-left: var(--ink-bold) solid var(--ink);
-  border-radius: 4px;
+  padding: 9px 11px;
+  background: var(--ink-200);
+  border-left: 2px solid var(--ink-400);
 }

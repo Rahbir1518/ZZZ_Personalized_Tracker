@@ -1,139 +1,248 @@
+/**
+ * The roster card.
+ *
+ * The grid applies a skew; each tile counter-skews its own face so the
+ * portrait and all text stay upright and legible. Without that the whole
+ * roster becomes unreadable at a glance, which defeats the point of it.
+ */
+
 .tile {
   position: relative;
-  display: grid;
-  gap: 2px;
-  padding: 0 0 6px;
+  display: block;
+  padding: 0;
   font: inherit;
   text-align: left;
-  color: var(--ink);
-  background: var(--panel);
-  border: var(--ink-bold) solid var(--ink);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-pop-sm);
+  color: inherit;
+  background: none;
+  border: 0;
   cursor: pointer;
-  overflow: hidden;
-  transition:
-    transform 110ms ease,
-    box-shadow 110ms ease;
+  /* No radius, no shadow: tiles are pieces of one sheet, not floating cards. */
+  outline-offset: -2px;
 }
 
-.tile:hover {
-  transform: translate(-2px, -2px) rotate(-0.8deg);
-  box-shadow: var(--shadow-pop);
-  z-index: 1;
+.tile-face {
+  position: relative;
+  display: block;
+  background: var(--ink-200);
+  border: var(--hair) solid var(--ink-300);
+  transform: skewY(calc(var(--roster-skew) * -1));
+  transition:
+    border-color 120ms ease,
+    transform 140ms ease;
+}
+
+.tile:hover .tile-face {
+  border-color: var(--paper-dim);
+  transform: skewY(calc(var(--roster-skew) * -1)) translateY(-3px);
+  z-index: 3;
 }
 
 .tile:focus-visible {
-  outline: var(--ink-bold) solid var(--zap);
-  outline-offset: 3px;
+  outline: var(--edge) solid var(--gold);
 }
 
-/* Owned and fully built: the gold ink border from the brief. */
-.tile-built {
-  border-color: var(--pow-deep);
-  box-shadow: 3px 3px 0 var(--pow-deep);
-}
-
-.tile-built:hover {
-  box-shadow: 6px 6px 0 var(--pow-deep);
-}
-
-/* Un-owned agents are printed as flat halftone ghosts. */
-.tile-ghost {
-  opacity: 0.55;
-  filter: grayscale(1) contrast(0.9);
-}
-
-.tile-ghost:hover {
-  opacity: 0.85;
-}
-
-/* --- art ------------------------------------------------------------- */
+/* --- art --------------------------------------------------------------- */
 
 .tile-art {
   position: relative;
-  aspect-ratio: 1;
-  background: var(--tint);
-  border-bottom: var(--ink-bold) solid var(--ink);
+  display: block;
+  aspect-ratio: 374 / 470;
   overflow: hidden;
+  background: linear-gradient(160deg, var(--ink-300), var(--ink-100));
 }
 
 .tile-art img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center top;
   display: block;
+  transition: transform 220ms ease;
+}
+
+/**
+ * An agent with no card art falls back to a 1:1 face crop. Filling the frame
+ * with it scales a 152px source past 3x and crops the sides off, so the tile
+ * stops matching its neighbours entirely. Contain it instead: slightly letter-
+ * boxed, but the same subject at the same scale as every other card.
+ */
+.tile-art img.is-fallback {
+  object-fit: contain;
+  object-position: center 18%;
+}
+
+.tile:hover .tile-art img {
+  transform: scale(1.05);
 }
 
 .tile-art-fallback {
   display: grid;
   place-items: center;
   height: 100%;
-  font-size: 1.8rem;
-  color: var(--ink);
+  font-size: 1.5rem;
+  color: var(--ink-400);
 }
 
-/* Ben-Day dots over the portrait tie the art into the printed look. */
-.tile-halftone {
+/* Keeps the strip legible over bright artwork. */
+.tile-scrim {
   position: absolute;
   inset: 0;
-  mix-blend-mode: multiply;
-  opacity: 0.5;
+  background: linear-gradient(180deg, transparent 55%, rgba(5, 5, 5, 0.85) 100%);
   pointer-events: none;
 }
 
-/* --- corner marks ----------------------------------------------------- */
+/* --- corner marks ------------------------------------------------------ */
 
-.tile-rarity,
-.tile-mindscape {
-  position: absolute;
-  top: 5px;
-  display: grid;
-  place-items: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 4px;
-  font-size: 0.8rem;
-  border: var(--ink-hair) solid var(--ink);
-  border-radius: 6px;
-}
-
+/**
+ * The rank plate, set into the portrait's top-left corner the way the game
+ * does it. Sized to read from across the room without eating the artwork:
+ * roughly a fifth of the tile's width.
+ */
 .tile-rarity {
-  left: 5px;
-  background: var(--pow);
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
 }
 
-.tile-mindscape {
-  right: 5px;
-  background: var(--zap);
-  color: var(--panel);
+/* Un-owned agents are dimmed as a whole; the plate goes with them, or it
+   becomes the brightest thing on a tile that is meant to recede. */
+.tile.is-ghost .tile-rarity {
+  filter: saturate(0.32) brightness(0.62);
+}
+
+.tile.is-ghost:hover .tile-rarity {
+  filter: saturate(0.7) brightness(0.85);
 }
 
 .tile-element {
   position: absolute;
-  top: 32px;
-  left: 5px;
-  width: 16px;
-  height: 16px;
+  top: 5px;
+  right: 5px;
+  z-index: 2;
+  width: 7px;
+  height: 7px;
   background: var(--tint);
-  border: var(--ink-hair) solid var(--ink);
-  border-radius: 50%;
+  transform: rotate(45deg);
 }
 
-/* --- label ------------------------------------------------------------ */
+.tile-star {
+  top: 0;
+  right: 0;
+}
+
+/**
+ * Mindscape badge, bottom-right over the art and clear of the name strip.
+ * M0 is deliberately shown too - "which of mine are at M0" is the question
+ * this view exists to answer.
+ */
+.tile-mindscape {
+  position: absolute;
+  right: 5px;
+  bottom: 44px;
+  z-index: 2;
+  min-width: 26px;
+  padding: 2px 6px 3px;
+  font-size: 0.84rem;
+  line-height: 1;
+  text-align: center;
+  color: var(--white);
+  background: rgba(5, 5, 5, 0.82);
+  border: var(--hair) solid var(--ink-400);
+  clip-path: polygon(5px 0, 100% 0, 100% 100%, 0 100%, 0 5px);
+}
+
+/* Any mindscape above zero is an achievement; gold it. */
+.tile.is-owned .tile-mindscape:not(.is-zero) {
+  color: var(--gold);
+  border-color: color-mix(in srgb, var(--gold) 55%, var(--ink-400));
+}
+
+/* --- metadata strip ---------------------------------------------------- */
+
+.tile-strip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: grid;
+  gap: 1px;
+  padding: 4px 7px 6px;
+}
 
 .tile-name {
-  padding: 5px 7px 0;
-  font-size: 0.92rem;
-  line-height: 1.1;
-  /* Long agent names must not push the tile out of the grid. */
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.08rem;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--white);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.tile-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px;
+  font-family: var(--font-tech);
+  font-weight: 600;
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  color: var(--paper-dim);
+}
+
 .tile-level {
-  padding: 0 7px;
-  font-size: 0.72rem;
-  color: var(--ink-soft);
+  color: var(--gold);
+}
+
+.tile-tracker {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+/* --- states ------------------------------------------------------------ */
+
+/* Fully built: gold edge and a gold level readout. */
+.tile.is-built .tile-face {
+  border-color: var(--gold);
+}
+
+/* Un-owned agents drop back into the sheet. */
+.tile.is-ghost .tile-face {
+  border-color: var(--ink-200);
+}
+
+.tile.is-ghost .tile-art img {
+  filter: grayscale(1) brightness(0.45) contrast(1.05);
+}
+
+.tile.is-ghost .tile-name {
+  color: var(--muted);
+}
+
+.tile.is-ghost:hover .tile-art img {
+  filter: grayscale(0.55) brightness(0.72);
+}
+
+/* The emphasised agent: gold hairline plus an offset accent bar, rather than
+   a plain coloured border. */
+.tile.is-selected .tile-face {
+  border-color: var(--gold);
+}
+
+.tile.is-selected .tile-face::after {
+  content: '';
+  position: absolute;
+  left: -3px;
+  top: 8%;
+  bottom: 8%;
+  width: 3px;
+  background: var(--gold);
 }

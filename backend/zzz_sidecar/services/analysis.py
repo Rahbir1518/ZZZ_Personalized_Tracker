@@ -22,6 +22,7 @@ from ..models import (
     AgentGuide,
     Analysis,
     BuildGap,
+    FarmingAgent,
     FarmingPriority,
     GapSeverity,
     TeamStatus,
@@ -61,6 +62,11 @@ def build_guide_index(guides: list[AgentGuide]) -> dict[str, AgentGuide]:
     Prydwen's heading for Jane reads "Jane Doe" while HoYoLAB calls her "Jane".
     Indexing the slug as well covers that, since the slug is ``jane-doe``.
 
+    Alternate versions of an agent are named in a different word order by each
+    source: HoYoLAB's "Soldier 0 - Anby" is Prydwen's "Anby: Soldier 0", and
+    "Starlight - Billy" is "Billy - Starlight". Indexing the *set* of words as
+    well catches those without any per-agent special-casing.
+
     Exact names win: a later, less specific key never overwrites one already
     claimed, so "Anby" cannot be stolen by "Anby: Soldier 0".
     """
@@ -69,7 +75,14 @@ def build_guide_index(guides: list[AgentGuide]) -> dict[str, AgentGuide]:
         index.setdefault(_normalise(guide.agent_name), guide)
     for guide in guides:
         index.setdefault(_normalise(guide.slug), guide)
+    for guide in guides:
+        index.setdefault(_word_set_key(guide.agent_name), guide)
     return index
+
+
+def _word_set_key(name: str) -> str:
+    """An order-independent comparison key: the normalised words, sorted."""
+    return " ".join(sorted(_normalise(name).split()))
 
 
 def find_guide(agent: Agent, index: dict[str, AgentGuide]) -> AgentGuide | None:
@@ -82,6 +95,12 @@ def find_guide(agent: Agent, index: dict[str, AgentGuide]) -> AgentGuide | None:
         if not candidate:
             continue
         guide = index.get(_normalise(candidate))
+        if guide is not None:
+            return guide
+    for candidate in (agent.name, agent.full_name):
+        if not candidate:
+            continue
+        guide = index.get(_word_set_key(candidate))
         if guide is not None:
             return guide
     return None
@@ -256,31 +275,76 @@ def evaluate_teams(
     return fieldable, suggested
 
 
-def suggest_farming(gaps: list[BuildGap], teams: list[TeamStatus]) -> list[FarmingPriority]:
+def suggest_farming(
+    gaps: list[BuildGap],
+    teams: list[TeamStatus],
+    guides: list[AgentGuide] | None = None,
+    portraits: dict[str, str] | None = None,
+    owned_names: set[str] | None = None,
+) -> list[FarmingPriority]:
     """Rank what to farm next.
 
-    Weighted by how many nearly-fieldable teams an agent unblocks, so effort
+    Weighted by how many nearly-fieldable teams a target unblocks, so effort
     goes where it opens up the most play.
+
+    Each disc-set target also lists **every agent that recommends the set**, not
+    just the ones already owned: seeing that a set serves three agents you are
+    building toward is the information that makes it worth farming. The UI dims
+    the un-owned ones.
     """
+    guides = guides or []
+    portraits = portraits or {}
+    owned_names = owned_names or set()
     out: list[FarmingPriority] = []
+
+    # Which agents want each set, and the set's art, across every guide.
+    set_wanted_by: dict[str, list[str]] = {}
+    set_icons: dict[str, str] = {}
+    for guide in guides:
+        for rec in guide.disc_sets:
+            if not rec.recommended:
+                continue
+            key = _normalise(rec.set_name)
+            set_icons.setdefault(key, rec.icon)
+            names = set_wanted_by.setdefault(key, [])
+            if guide.agent_name not in names:
+                names.append(guide.agent_name)
+
+    def as_agents(names: list[str]) -> list[FarmingAgent]:
+        return [
+            FarmingAgent(
+                name=name,
+                icon=portraits.get(_normalise(name), ""),
+                owned=_normalise(name) in owned_names,
+            )
+            for name in names
+        ]
 
     # Disc sets blocking otherwise-ready agents.
     set_demand: Counter[str] = Counter()
-    set_agents: dict[str, list[str]] = {}
+    set_label_for: dict[str, str] = {}
     for gap in gaps:
-        if gap.severity in (GapSeverity.COMPLETE,):
+        if gap.severity is GapSeverity.COMPLETE:
             continue
         for missing in gap.missing_sets[:1]:
-            set_demand[missing] += 1
-            set_agents.setdefault(missing, []).append(gap.agent_name)
+            # "4pc Fanged Metal (2/4)" -> the set name, for matching art.
+            bare = re.sub(r"^\d+pc\s+", "", missing)
+            bare = re.sub(r"\s*\(\d+/\d+\)$", "", bare).strip()
+            set_demand[bare] += 1
+            set_label_for[bare] = missing
 
-    for set_label, count in set_demand.most_common(5):
+    for set_name, count in set_demand.most_common(6):
+        key = _normalise(set_name)
+        wanted_by = set_wanted_by.get(key, [])
         out.append(
             FarmingPriority(
-                label=f"Farm {set_label}",
+                label=f"Farm {set_label_for.get(set_name, set_name)}",
                 reason=f"Needed by {count} agent(s) you already own.",
                 weight=float(count),
-                agent_names=set_agents.get(set_label, [])[:6],
+                agent_names=wanted_by[:12],
+                kind="disc_set",
+                icon=set_icons.get(key, ""),
+                agents=as_agents(wanted_by[:12]),
             )
         )
 
@@ -297,6 +361,9 @@ def suggest_farming(gaps: list[BuildGap], teams: list[TeamStatus]) -> list[Farmi
                 reason=f"Completes {count} recommended team(s) you almost have.",
                 weight=float(count) * 1.5,
                 agent_names=[agent_name],
+                kind="agent",
+                icon=portraits.get(_normalise(agent_name), ""),
+                agents=as_agents([agent_name]),
             )
         )
 
@@ -329,10 +396,30 @@ def run_analysis(
 
     my_teams, suggested = evaluate_teams(guides, owned_names, gaps_by_name)
 
+    # Portraits come from the roster first (HoYoLAB art for owned agents, and
+    # whatever the icon backfill found for the rest), then from team rows,
+    # which cover agents the catalog has no art for at all.
+    portraits: dict[str, str] = {}
+    for agent in agents:
+        icon = agent.square_icon or agent.rectangle_icon
+        if not icon:
+            continue
+        portraits.setdefault(_normalise(agent.name), icon)
+        if agent.full_name:
+            portraits.setdefault(_normalise(agent.full_name), icon)
+
+    for guide in guides:
+        for team in guide.teams:
+            for member in team.members:
+                if member.icon:
+                    portraits.setdefault(_normalise(member.name), member.icon)
+
     return Analysis(
         build_gaps=gaps,
         my_teams=my_teams,
         suggested_teams=suggested,
-        farming=suggest_farming(gaps, my_teams + suggested),
+        farming=suggest_farming(
+            gaps, my_teams + suggested, guides, portraits, owned_names
+        ),
         computed_at=time.time(),
     )

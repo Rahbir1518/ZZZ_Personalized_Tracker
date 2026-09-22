@@ -1,44 +1,60 @@
 /**
- * One trading-card tile in the roster grid.
+ * One agent in the roster.
  *
- * Un-owned agents render as dimmed halftone "ghosts" so the grid doubles as a
- * "what am I missing" view, which is what the Suggested-teams tab builds on.
+ * Modelled on the in-game agent-selection card: the portrait is the card, with
+ * a thin metadata strip welded to the bottom. Everything else is a corner mark.
+ * Cards sit flush against each other so the roster reads as one printed sheet
+ * rather than a set of floating components.
  */
 
 import { forwardRef } from 'react'
 import type { Agent, BuildGap } from '../types'
+import { Portrait, RankBadge } from './Ui'
 import './AgentTile.css'
 
 interface Props {
   agent: Agent
   gap?: BuildGap
+  selected?: boolean
   onOpen: (agent: Agent, origin: DOMRect) => void
 }
 
-/** Element name -> tint. Falls back to plain ink for anything unrecognised. */
+/** Element -> the small marker tint. Unknown elements fall back to neutral. */
 const ELEMENT_TINT: Record<string, string> = {
-  Ice: '#7fd4ff',
-  Fire: '#ff8a5c',
-  Electric: '#c08cff',
-  Ether: '#ff6fae',
-  Physical: '#ffd23f',
-  Frost: '#a8e6ff',
-  'Auric Ink': '#ffb3d9'
+  Ice: 'var(--el-ice)',
+  Frost: 'var(--el-ice)',
+  Fire: 'var(--el-fire)',
+  Electric: 'var(--el-electric)',
+  Ether: 'var(--el-ether)',
+  'Auric Ink': 'var(--el-ether)',
+  Physical: 'var(--el-physical)'
+}
+
+/** Short tracker codes, in the register the game uses for metadata.
+ *  Mindscape is excluded: it has its own corner badge. */
+function trackerLine(agent: Agent, gap?: BuildGap): string {
+  if (!agent.owned) return 'NOT OWNED'
+  if (gap === undefined) return ''
+  return `${gap.engine_matched ? 'ENG ✓' : 'ENG ✕'}  SET ${Math.round(gap.disc_set_match * 100)}%`
 }
 
 export const AgentTile = forwardRef<HTMLButtonElement, Props>(function AgentTile(
-  { agent, gap, onOpen },
+  { agent, gap, selected = false, onOpen },
   ref
 ) {
-  const tint = ELEMENT_TINT[agent.element] ?? 'var(--paper-deep)'
-  // A fully-built agent earns the gold border, as specified in the brief.
+  const tint = ELEMENT_TINT[agent.element] ?? 'var(--muted)'
   const built = gap?.severity === 'COMPLETE'
-  const portrait = agent.square_icon || agent.rectangle_icon
+  // Card art (374x512) where available; the square thumbnail is the fallback.
+  // `rectangle_icon` is deliberately not in this chain: HoYoLAB's is a 180x64
+  // banner, and there is no honest way to show that in a portrait frame.
+  const portrait = agent.card_icon
+  const portraitFallback = agent.square_icon
 
   const classes = [
     'tile',
-    agent.owned ? 'tile-owned' : 'tile-ghost',
-    built ? 'tile-built' : ''
+    agent.owned ? 'is-owned' : 'is-ghost',
+    built ? 'is-built' : '',
+    selected ? 'is-selected' : ''
   ]
     .filter(Boolean)
     .join(' ')
@@ -56,31 +72,36 @@ export const AgentTile = forwardRef<HTMLButtonElement, Props>(function AgentTile
           : `${agent.name}, not owned`
       }
     >
-      <div className="tile-art">
-        {portrait !== '' ? (
-          <img src={portrait} alt="" loading="lazy" draggable={false} />
-        ) : (
-          <span className="tile-art-fallback display">{agent.name.slice(0, 2)}</span>
-        )}
-        <span className="tile-halftone halftone" aria-hidden="true" />
-      </div>
-
-      {agent.rarity !== '' && <span className="tile-rarity display">{agent.rarity}</span>}
-
-      {agent.owned && (agent.mindscape ?? 0) > 0 && (
-        <span className="tile-mindscape display" title={`Mindscape ${agent.mindscape}`}>
-          M{agent.mindscape}
+      {/* Counter-skewed so the card face stays upright inside the tilted grid. */}
+      <span className="tile-face">
+        <span className="tile-art">
+          <Portrait src={portrait} fallback={portraitFallback} initials={agent.name.slice(0, 2)} />
+          <span className="tile-scrim" aria-hidden="true" />
         </span>
-      )}
 
-      {agent.element !== '' && (
+        <RankBadge className="tile-rarity" rank={agent.rarity} size={46} />
         <span className="tile-element" title={agent.element} aria-hidden="true" />
-      )}
 
-      <span className="tile-name display">{agent.name}</span>
+        {built && <span className="marker-star tile-star" aria-hidden="true" />}
 
-      <span className="tile-level">
-        {agent.owned ? `Lv ${agent.level ?? 0}` : 'Not owned'}
+        {/* Mindscape sits bottom-right over the art, as in the game. M0 is
+            shown too, but stays neutral — only an actual rank earns gold. */}
+        {agent.owned && (
+          <span
+            className={`tile-mindscape display ${(agent.mindscape ?? 0) === 0 ? 'is-zero' : ''}`}
+            title={`Mindscape ${agent.mindscape ?? 0}`}
+          >
+            M{agent.mindscape ?? 0}
+          </span>
+        )}
+
+        <span className="tile-strip">
+          <span className="tile-name">{agent.name}</span>
+          <span className="tile-meta">
+            <span className="tile-level">{agent.owned ? `LV.${agent.level ?? 0}` : '—'}</span>
+            <span className="tile-tracker">{trackerLine(agent, gap)}</span>
+          </span>
+        </span>
       </span>
     </button>
   )

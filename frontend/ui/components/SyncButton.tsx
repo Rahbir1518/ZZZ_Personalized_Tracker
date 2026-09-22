@@ -12,11 +12,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../api'
 import type { SourceProgress, SyncStatus } from '../types'
-import { Burst } from './ComicBits'
+import { Chip } from './Ui'
 import './SyncButton.css'
 
 const POLL_MS = 600
-/** How long the "SYNCED!" burst stays up after a run finishes. */
+/** How long the completion chip stays up after a run finishes. */
 const CELEBRATE_MS = 2600
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -84,7 +84,7 @@ export function SyncButton({ onFinished }: { onFinished?: () => void }): React.J
     onFinishedRef.current = onFinished
   }, [onFinished])
 
-  // Fire the completion callback (and the burst) on the running -> idle edge.
+  // Fire the completion callback (and the chip) on the running -> idle edge.
   useEffect(() => {
     const running = status?.running === true
     const justFinished = wasRunning.current && !running
@@ -136,7 +136,7 @@ export function SyncButton({ onFinished }: { onFinished?: () => void }): React.J
       <div className="sync-actions">
         <button
           type="button"
-          className="ink-button sync-button"
+          className="btn btn-primary sync-button"
           onClick={() => void start()}
           disabled={running || outOfSyncs}
           aria-busy={running}
@@ -146,16 +146,16 @@ export function SyncButton({ onFinished }: { onFinished?: () => void }): React.J
         </button>
 
         {running && (
-          <button type="button" className="ink-button ink-button-quiet" onClick={() => void cancel()}>
+          <button type="button" className="btn" onClick={() => void cancel()}>
             Cancel
           </button>
         )}
 
         {celebrating && (
           <span className="sync-celebrate">
-            <Burst tone={status?.partial_failure === true ? 'warn' : 'good'}>
-              {status?.partial_failure === true ? 'Partial' : 'Synced!'}
-            </Burst>
+            <Chip tone={status?.partial_failure === true ? 'bad' : 'good'}>
+              {status?.partial_failure === true ? 'Partial' : 'Synced'}
+            </Chip>
           </span>
         )}
       </div>

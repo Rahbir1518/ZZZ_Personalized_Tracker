@@ -1,0 +1,523 @@
+/**
+ * The design system: an editorial, high-contrast, near-black interface in the
+ * visual family of ZZZ's in-game menus.
+ *
+ * Rules that hold the look together:
+ *  - Near-black base. The UI is black/grey/white; character art supplies the
+ *    colour. Yellow is an accent, used sparingly, never as a fill.
+ *  - Hard geometry. No rounded cards, no glassmorphism, no soft drop shadows.
+ *    Corners are cut with clip-path, edges are 1px hairlines.
+ *  - Type is condensed, uppercase and tightly tracked, often at an angle.
+ *  - The background is layered (polygons, hatching, grain) but stays low
+ *    contrast so it never competes with the roster.
+ *
+ * Tokens and the shared primitives live here; per-component rules sit next to
+ * their components.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow+Semi+Condensed:wght@400;500;600;700&display=swap');
+
+:root {
+  /* --- base ------------------------------------------------------------ */
+  --ink-000: #050505;
+  --ink-100: #0b0b0c;
+  --ink-200: #151516;
+  --ink-300: #242426;
+  --ink-400: #35353a;
+
+  /* --- ui -------------------------------------------------------------- */
+  --paper: #e8e8e5;
+  --paper-dim: #c9c9c5;
+  --white: #ffffff;
+  --muted: #7d7d80;
+
+  /* --- accent (use sparingly) ------------------------------------------ */
+  --gold: #f2c230;
+  --gold-deep: #d9a91e;
+  --alert: #ff4d4d;
+  --good: #46d17b;
+
+  /* --- rank badges ------------------------------------------------------ */
+  /* S and A use the real in-game art (see RankBadge). Only B is drawn, in the
+     game's blue - the one place a saturated fill is allowed, because on a rank
+     badge the colour *is* the information. */
+  --rank-b-lit: #6fb7f0;
+  --rank-b-dim: #2360a8;
+
+  /* --- element tints, for small markers only --------------------------- */
+  --el-ice: #7fd4ff;
+  --el-fire: #ff8a5c;
+  --el-electric: #c08cff;
+  --el-ether: #ff6fae;
+  --el-physical: #ffd23f;
+
+  /* --- geometry -------------------------------------------------------- */
+  --hair: 1px;
+  --edge: 2px;
+  /* The signature cut corner. Applied to panels and tiles. */
+  --cut: 10px;
+  --roster-skew: -5deg;
+
+  --font-display: 'Barlow Condensed', 'Oswald', Impact, sans-serif;
+  --font-tech: 'Barlow Semi Condensed', ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-tech);
+  color: var(--paper);
+  background-color: var(--ink-000);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --------------------------------------------------------------------- */
+/* Layered background                                                     */
+/* --------------------------------------------------------------------- */
+
+/**
+ * Four stacked layers: a charcoal wash, diagonal hatching, a halftone dot
+ * field, and film grain. All kept far below the art in contrast.
+ */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 90% at 82% 8%, rgba(242, 194, 48, 0.05), transparent 60%),
+    radial-gradient(90% 70% at 10% 95%, rgba(255, 255, 255, 0.035), transparent 60%),
+    linear-gradient(160deg, var(--ink-100) 0%, var(--ink-000) 55%, #08080a 100%);
+}
+
+.backdrop::before {
+  /* 45-degree hatching */
+  content: '';
+  position: absolute;
+  inset: -20%;
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.028) 0 1px,
+    transparent 1px 9px
+  );
+  transform: rotate(-4deg);
+}
+
+.backdrop::after {
+  /* halftone field + grain */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.05) 1px, transparent 0),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  background-size:
+    22px 22px,
+    120px 120px;
+  opacity: 0.55;
+  mix-blend-mode: soft-light;
+}
+
+/** Oversized cropped graphics that sit in the negative space. */
+.backdrop-marks {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.backdrop-marks span {
+  position: absolute;
+  border: var(--hair) solid rgba(255, 255, 255, 0.06);
+  border-radius: 50%;
+}
+
+.backdrop-marks .ring-a {
+  width: 62vh;
+  height: 62vh;
+  left: -18vh;
+  bottom: -24vh;
+}
+
+.backdrop-marks .ring-b {
+  width: 38vh;
+  height: 38vh;
+  right: 6vw;
+  top: -14vh;
+  border-color: rgba(242, 194, 48, 0.12);
+}
+
+.backdrop-marks .slab {
+  border: none;
+  border-radius: 0;
+  width: 46vw;
+  height: 140vh;
+  right: -14vw;
+  top: -20vh;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.018));
+  transform: skewX(-12deg);
+}
+
+/**
+ * Faint oversized wordmark, set across the top of the stage.
+ *
+ * It used to hang off the bottom edge, which sliced the letterforms in half
+ * and left the word unreadable — the one thing a wordmark cannot be. Sitting
+ * it at the top puts it in the genuinely empty band above the content, where
+ * the whole word fits. `clamp` keeps it from outgrowing a short window, and
+ * the right pad keeps it clear of the navigation rail.
+ */
+.backdrop-word {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 0;
+  padding: 0.05em 90px 0 26px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(3rem, 15vh, 11rem);
+  /* Not `overflow: hidden` and not a line-height under 1: between them, those
+     are what cropped the previous wordmark. */
+  line-height: 1.08;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.035);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* --------------------------------------------------------------------- */
+/* Type                                                                   */
+/* --------------------------------------------------------------------- */
+
+.display {
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 0.95;
+}
+
+/** Small all-caps technical label; the workhorse for metadata. */
+.tech {
+  font-family: var(--font-tech);
+  font-weight: 600;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+
+/** A section title with the thin rule that trails off to the right. */
+.rule-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 10px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.15rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--white);
+}
+
+.rule-title::after {
+  content: '';
+  flex: 1;
+  height: var(--hair);
+  background: linear-gradient(90deg, var(--ink-400), transparent);
+}
+
+/* --------------------------------------------------------------------- */
+/* Panels                                                                 */
+/* --------------------------------------------------------------------- */
+
+/** The cut-corner panel. Two nested elements give a hairline edge. */
+.panel {
+  position: relative;
+  background: var(--ink-100);
+  border: var(--hair) solid var(--ink-300);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  padding: 16px 18px;
+}
+
+.panel-raised {
+  background: var(--ink-200);
+}
+
+/** A tiny corner tick, used to make panels read as fabricated parts. */
+.panel-tick::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-top: var(--edge) solid var(--gold);
+  border-right: var(--edge) solid var(--gold);
+}
+
+/* --------------------------------------------------------------------- */
+/* Buttons                                                                */
+/* --------------------------------------------------------------------- */
+
+.btn {
+  position: relative;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.92rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--paper);
+  background: var(--ink-200);
+  border: var(--hair) solid var(--ink-400);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  padding: 8px 18px;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--ink-300);
+  border-color: var(--muted);
+  color: var(--white);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn:focus-visible {
+  outline: var(--edge) solid var(--gold);
+  outline-offset: 2px;
+}
+
+/** The one loud button on screen. */
+.btn-primary {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--ink-000);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--white);
+  border-color: var(--white);
+  color: var(--ink-000);
+}
+
+.btn-active {
+  background: var(--paper);
+  border-color: var(--paper);
+  color: var(--ink-000);
+}
+
+/* --------------------------------------------------------------------- */
+/* Inputs                                                                 */
+/* --------------------------------------------------------------------- */
+
+/**
+ * Inputs sit on a near-black page, so they need a lighter fill and a visible
+ * edge. A #050505 field with a #35353a hairline on a #050505 background is
+ * effectively invisible - the search box read as missing entirely.
+ *
+ * Everything about the typed text is stated outright rather than inherited:
+ * `color` alone is not enough on WebKit, where `-webkit-text-fill-color` wins
+ * if anything up the tree has set it. `appearance: none` is deliberately not
+ * used here - on `input[type=search]` it takes the clear button with it.
+ */
+.field {
+  font-family: var(--font-tech);
+  font-weight: 600;
+  font-size: 0.92rem;
+  letter-spacing: 0.04em;
+  color: var(--white);
+  -webkit-text-fill-color: var(--white);
+  opacity: 1;
+  caret-color: var(--gold);
+  background: var(--ink-300);
+  border: var(--hair) solid var(--muted);
+  border-bottom: var(--edge) solid var(--ink-400);
+  padding: 9px 12px;
+}
+
+.field::placeholder {
+  color: var(--paper-dim);
+  -webkit-text-fill-color: var(--paper-dim);
+  opacity: 0.7;
+}
+
+.field:hover {
+  border-color: var(--paper-dim);
+}
+
+/* A dark field needs an unmistakable focused state and a visible caret —
+   without them it is impossible to tell the box is even active. */
+.field:focus,
+.field:focus-visible {
+  outline: none;
+  color: var(--white);
+  -webkit-text-fill-color: var(--white);
+  background: var(--ink-200);
+  border-color: var(--gold);
+  border-bottom-color: var(--gold);
+}
+
+/* The native clear affordance is invisible on a dark field. */
+.field::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  width: 11px;
+  height: 11px;
+  cursor: pointer;
+  background: var(--muted);
+  /* A cross, drawn as a mask so it takes the token colour. */
+  mask: linear-gradient(45deg, transparent 43%, #000 43% 57%, transparent 57%),
+    linear-gradient(-45deg, transparent 43%, #000 43% 57%, transparent 57%);
+}
+
+.field::-webkit-search-cancel-button:hover {
+  background: var(--white);
+}
+
+/* --------------------------------------------------------------------- */
+/* Meters                                                                 */
+/* --------------------------------------------------------------------- */
+
+.meter {
+  position: relative;
+  height: 14px;
+  background: var(--ink-300);
+  border: var(--hair) solid var(--ink-400);
+  overflow: hidden;
+}
+
+.meter-fill {
+  height: 100%;
+  background: var(--gold);
+  transition: width 260ms ease;
+}
+
+.meter-fill.is-good {
+  background: var(--good);
+}
+.meter-fill.is-warn {
+  background: var(--gold-deep);
+}
+.meter-fill.is-bad {
+  background: var(--alert);
+}
+
+.meter-label {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-tech);
+  font-weight: 700;
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  color: var(--white);
+  mix-blend-mode: difference;
+}
+
+/* --------------------------------------------------------------------- */
+/* Chips, badges, markers                                                 */
+/* --------------------------------------------------------------------- */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  font-family: var(--font-tech);
+  font-weight: 700;
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--paper-dim);
+  background: var(--ink-200);
+  border: var(--hair) solid var(--ink-400);
+}
+
+.chip-gold {
+  color: var(--ink-000);
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.chip-good {
+  color: var(--good);
+  border-color: color-mix(in srgb, var(--good) 45%, var(--ink-400));
+}
+
+.chip-bad {
+  color: var(--alert);
+  border-color: color-mix(in srgb, var(--alert) 45%, var(--ink-400));
+}
+
+/** The angular selection marker used on the emphasised agent. */
+.marker-star {
+  position: absolute;
+  z-index: 2;
+  width: 0;
+  height: 0;
+  border-left: 13px solid var(--gold);
+  border-bottom: 13px solid transparent;
+}
+
+/* --------------------------------------------------------------------- */
+/* Scrollbars                                                             */
+/* --------------------------------------------------------------------- */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ink-000);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ink-400);
+  border: 2px solid var(--ink-000);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+/* --------------------------------------------------------------------- */
+/* Motion                                                                 */
+/* --------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  /* The skewed roster is decorative; flatten it for reduced motion too, so
+     the composition stops shifting under the cursor. */
+  :root {
+    --roster-skew: 0deg;
+  }
+}

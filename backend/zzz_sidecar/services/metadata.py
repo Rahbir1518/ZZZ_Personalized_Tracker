@@ -11,9 +11,10 @@ map it ourselves, **defensively**: unknown element/specialty codes degrade to a
 readable label instead of raising. A new agent type on patch day dims one tile;
 it does not break the grid.
 
-Endpoints (both confirmed working):
+Endpoints (all confirmed working):
     https://static.nanoka.cc/manifest.json            -> {"zzz": {"latest", "live", ...}}
     https://static.nanoka.cc/zzz/<version>/character.json
+    https://static.nanoka.cc/zzz/<version>/weapon.json -> W-Engine ranks
 
 HoYoLAB already returns portrait URLs for agents the user *owns*, so this source
 is only responsible for the un-owned remainder.
@@ -59,6 +60,11 @@ _SPECIALTIES: dict[int, str] = {
 #: The payload uses numeric ranks, not the "S"/"A" letters the UI shows.
 _RARITIES: dict[int, str] = {3: "A", 4: "S"}
 
+#: W-Engines go one rank lower than agents do. Spot-checked against live data:
+#: Steel Cushion / Deep Sea Visitor / Hellfire Gears = 4, Starlight Engine /
+#: Weeping Gemini / Electro-Lip Gloss = 3.
+_ENGINE_RARITIES: dict[int, str] = {2: "B", 3: "A", 4: "S"}
+
 
 class MetadataService:
     """Catalog + version lookups, cached in SQLite, refreshed on patch days."""
@@ -98,6 +104,60 @@ class MetadataService:
         self._cache.put_metadata("agents", version, [a.model_dump() for a in agents])
         self._cache.put_metadata("version", version, [{"version": version}])
         return agents
+
+    async def fetch_engine_ranks(self, *, force: bool = False) -> dict[str, str]:
+        """W-Engine display name -> "S" / "A" / "B".
+
+        Prydwen's recommendation markup does not state a rank, and guessing one
+        is not acceptable on a badge: a player deciding what to pull would be
+        reading a number we made up. This is the authoritative source, and it
+        is the same CDN and the same cache policy as the agent catalog.
+        """
+        if not force:
+            cached = self.engine_ranks_from_cache()
+            if cached is not None:
+                return cached
+
+        async with httpx.AsyncClient(
+            headers={"User-Agent": USER_AGENT}, timeout=30.0, follow_redirects=True
+        ) as client:
+            version = await self._fetch_version(client)
+            response = await client.get(f"{CDN_BASE}/zzz/{version}/weapon.json")
+            response.raise_for_status()
+            raw: dict[str, Any] = response.json()
+
+        ranks: dict[str, str] = {}
+        rows: list[dict[str, Any]] = []
+        for value in raw.values():
+            if not isinstance(value, dict):
+                continue
+            name = str(value.get("en") or "").strip()
+            rarity = _label(_ENGINE_RARITIES, value.get("rank"), "")
+            if name and rarity:
+                ranks[name] = rarity
+                rows.append({"name": name, "rarity": rarity})
+
+        self._cache.put_metadata("engine_ranks", version, rows)
+        return ranks
+
+    def engine_ranks_from_cache(self) -> dict[str, str] | None:
+        """The cached rank map, or None when it is missing or stale.
+
+        Synchronous on purpose: startup reads it without touching the network,
+        so engines carry a rank before the session's first sync. Absent cache
+        means no badge, never a guessed one.
+        """
+        cached = self._cache.get_metadata("engine_ranks")
+        if cached is None:
+            return None
+        payload, fetched_at = cached
+        if time.time() - fetched_at >= METADATA_CACHE_MAX_AGE_SECONDS:
+            return None
+        return {
+            str(row["name"]): str(row["rarity"])
+            for row in payload
+            if isinstance(row, dict) and row.get("name") and row.get("rarity")
+        }
 
     async def game_version(self) -> str:
         """Current game version, used as part of the Prydwen cache key.

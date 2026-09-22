@@ -1,0 +1,233 @@
+/* Styles for the shared primitives. Tokens come from styles/zzz.css. */
+
+/* --- EmptyState -------------------------------------------------------- */
+
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 64px 24px;
+  text-align: center;
+}
+
+/* A cropped crosshair, rather than an illustration. */
+.empty-mark {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  border: var(--hair) solid var(--ink-400);
+  transform: rotate(45deg);
+}
+
+.empty-mark::before,
+.empty-mark::after {
+  content: '';
+  position: absolute;
+  background: var(--gold);
+}
+
+.empty-mark::before {
+  left: 50%;
+  top: 12px;
+  bottom: 12px;
+  width: var(--hair);
+  transform: translateX(-50%);
+}
+
+.empty-mark::after {
+  top: 50%;
+  left: 12px;
+  right: 12px;
+  height: var(--hair);
+  transform: translateY(-50%);
+}
+
+.empty-title {
+  margin: 4px 0 0;
+  font-size: 1.3rem;
+  color: var(--paper);
+}
+
+.empty-body {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+/* --- ErrorStrip -------------------------------------------------------- */
+
+.error-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--ink-200);
+  border: var(--hair) solid color-mix(in srgb, var(--alert) 45%, var(--ink-400));
+  border-left: 3px solid var(--alert);
+}
+
+.error-strip-tag {
+  flex: 0 0 auto;
+  font-size: 0.85rem;
+  letter-spacing: 0.14em;
+  color: var(--alert);
+}
+
+.error-strip-body {
+  flex: 1;
+  display: grid;
+  gap: 2px;
+  font-size: 0.85rem;
+  color: var(--paper);
+}
+
+.error-strip-hint {
+  font-style: normal;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* --- ItemIcon ---------------------------------------------------------- */
+
+.item-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  overflow: hidden;
+  background: var(--ink-300);
+  border: var(--hair) solid var(--ink-400);
+  /* Cut on the top-right and bottom-left, so the rank plate in the top-left
+     corner sits against a square edge instead of being sliced diagonally. */
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+}
+
+/* Direct child only: the rank badge is also an img in here, and it must keep
+   its own `object-fit: contain`. */
+.item-icon > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.item-icon-blank {
+  width: 40%;
+  height: var(--hair);
+  background: var(--ink-400);
+}
+
+/* Rarity reads as a border tint, not a coloured fill. */
+.item-icon.is-s {
+  border-color: color-mix(in srgb, var(--gold) 60%, var(--ink-400));
+}
+
+.item-icon.is-a {
+  border-color: color-mix(in srgb, var(--el-electric) 45%, var(--ink-400));
+}
+
+/* Top-left, clear of the frame's own cut corner at bottom-right. */
+.item-icon-rank {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+}
+
+/* --- RankBadge ---------------------------------------------------------- */
+
+/**
+ * Everything scales off `--rank-size`, so one set of rules covers a 16px
+ * corner marker on a disc and a 46px badge on a portrait.
+ */
+.rank {
+  position: relative;
+  width: var(--rank-size);
+  height: var(--rank-size);
+  pointer-events: none;
+  user-select: none;
+}
+
+/**
+ * The supplied in-game art. It is near-square but not exactly (336x348 and
+ * 234x240), so it is contained rather than stretched — a rank plate with the
+ * wrong proportions stops looking like the game's.
+ *
+ * No plate, no border, no shadow behind it: the art already has its own heavy
+ * black outline, which is what lets it sit on artwork at any brightness.
+ */
+.rank-art-box {
+  display: block;
+}
+
+.rank-art {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/**
+ * Drawn fallback for a rank with no supplied art (B today). Deliberately flat
+ * next to the real thing rather than a bad imitation of it.
+ */
+.rank-plate {
+  --rank-lit: var(--muted);
+  --rank-dim: var(--ink-400);
+  display: grid;
+  grid-template-rows: 1fr auto;
+  justify-items: center;
+  align-items: center;
+  padding-bottom: calc(var(--rank-size) * 0.04);
+  border-radius: calc(var(--rank-size) * 0.09);
+  background: linear-gradient(152deg, var(--rank-lit) 0%, var(--rank-dim) 78%);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.rank-b {
+  --rank-lit: var(--rank-b-lit);
+  --rank-dim: var(--rank-b-dim);
+}
+
+.rank .rank-letter {
+  font-size: calc(var(--rank-size) * 0.66);
+  line-height: 0.84;
+  letter-spacing: 0;
+  color: var(--white);
+  /* Reads on both the light top and the dark bottom of the gradient. */
+  text-shadow: 0 calc(var(--rank-size) * 0.03) calc(var(--rank-size) * 0.06) rgba(0, 0, 0, 0.55);
+}
+
+.rank-word {
+  font-family: var(--font-tech);
+  font-weight: 700;
+  font-size: calc(var(--rank-size) * 0.19);
+  line-height: 1;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+/* Too small for the caption: the letter takes the whole plate. */
+.rank.is-compact {
+  grid-template-rows: 1fr;
+  padding-bottom: 0;
+}
+
+.rank.is-compact .rank-letter {
+  font-size: calc(var(--rank-size) * 0.8);
+  line-height: 1;
+}
+
+/* --- Portrait ----------------------------------------------------------- */
+
+.portrait-blank {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--ink-400);
+}

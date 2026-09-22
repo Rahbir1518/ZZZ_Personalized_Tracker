@@ -62,6 +62,10 @@ class Agent(BaseModel):
     faction_name: str = ""
     square_icon: str = ""
     rectangle_icon: str = ""
+    #: 374x512 portrait from the recommendation source, when one is known.
+    #: HoYoLAB's own art is 152x186 (square) and 180x64 (banner), so it cannot
+    #: be shown large without either blurring or absurd cropping.
+    card_icon: str = ""
 
     owned: bool = False
     level: int | None = None
@@ -111,6 +115,9 @@ class DiscSetRecommendation(BaseModel):
 class EngineRecommendation(BaseModel):
     name: str
     icon: str = ""
+    #: "S" / "A" / "B", from the game data - Prydwen's markup does not say.
+    #: Empty when the engine is not in the catalog, which means "no badge".
+    rarity: str = ""
     #: 1-based position in Prydwen's ordered list.
     rank: int = 0
     note: str = ""
@@ -124,7 +131,10 @@ class TeamMember(BaseModel):
     """One slot in a recommended team, with art for display."""
 
     name: str
+    #: 160x160 thumbnail. Fine at small sizes, blurry above ~160px.
     icon: str = ""
+    #: 374x512 portrait, for anywhere the art is shown large.
+    card_icon: str = ""
     slug: str = ""
 
 
@@ -204,12 +214,26 @@ class TeamStatus(BaseModel):
     readiness: float = 0.0
 
 
+class FarmingAgent(BaseModel):
+    """An agent shown alongside a farming target, with art for display."""
+
+    name: str
+    icon: str = ""
+    owned: bool = False
+
+
 class FarmingPriority(BaseModel):
     label: str
     reason: str
     #: Higher is more urgent.
     weight: float = 0.0
     agent_names: list[str] = Field(default_factory=list)
+    #: "disc_set" targets carry the set icon; "agent" targets carry the agent's.
+    kind: str = "disc_set"
+    icon: str = ""
+    #: Who this target serves. Un-owned agents are included on purpose — the UI
+    #: dims them, which is what makes "worth farming toward" legible.
+    agents: list[FarmingAgent] = Field(default_factory=list)
 
 
 class Analysis(BaseModel):

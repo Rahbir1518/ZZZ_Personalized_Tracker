@@ -45,7 +45,7 @@ from ..models import (
     TeamMember,
     TeamRecommendation,
 )
-from .http import BASE_URL, clean_image_url
+from .http import BASE_URL, card_image_url, clean_image_url
 from .transport import Transport, build_transport
 from .source import PrydwenParseError
 
@@ -393,7 +393,12 @@ class HtmlPrydwenSource:
                 link = span.css_first("a")
                 href = (link.attributes.get("href") or "").rstrip("/") if link is not None else ""
                 members.append(
-                    TeamMember(name=name, icon=icon, slug=href.rsplit("/", 1)[-1] if href else "")
+                    TeamMember(
+                        name=name,
+                        icon=icon,
+                        card_icon=card_image_url(icon),
+                        slug=href.rsplit("/", 1)[-1] if href else "",
+                    )
                 )
 
             if not members:

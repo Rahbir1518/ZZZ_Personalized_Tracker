@@ -1,66 +1,128 @@
-.characters {
+.roster {
   display: grid;
   grid-template-rows: auto 1fr;
-  gap: 14px;
+  gap: 16px;
   height: 100%;
   min-height: 0;
 }
 
-.characters-toolbar {
+/* --- control bar -------------------------------------------------------- */
+
+.roster-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   flex-wrap: wrap;
 }
 
-.characters-filters {
+.roster-filters {
   display: flex;
+  /* Flush segmented control, not separate buttons. */
+  gap: 0;
+}
+
+.roster-filter {
+  clip-path: none;
+  padding: 7px 16px;
+  font-size: 0.82rem;
+  border-right-width: 0;
+}
+
+.roster-filter:last-child {
+  border-right-width: var(--hair);
+}
+
+.roster-search {
+  flex: 1 1 220px;
+  max-width: 320px;
+}
+
+.roster-counts {
+  display: flex;
+  gap: 18px;
+  margin-left: auto;
+}
+
+.roster-count {
+  display: flex;
+  align-items: baseline;
   gap: 6px;
 }
 
-.characters-filters .ink-button {
-  font-size: 0.9rem;
-  padding: 6px 14px;
-}
-
-.characters-filters .is-active {
-  background: var(--pow);
-  transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0 var(--ink);
-}
-
-.characters-search {
-  flex: 1 1 200px;
-  max-width: 300px;
-  padding: 8px 12px;
-  font: inherit;
-  font-size: 0.9rem;
-  background: var(--panel);
-  border: var(--ink-bold) solid var(--ink);
-  border-radius: var(--radius);
-}
-
-.characters-search:focus-visible {
-  outline: var(--ink-bold) solid var(--zap);
-  outline-offset: 2px;
-}
-
-.characters-count {
-  margin-left: auto;
+.roster-count b {
   font-family: var(--font-display);
-  letter-spacing: 0.8px;
-  font-size: 1rem;
+  font-weight: 800;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--white);
 }
 
-/* ~6 columns at the default window width, matching the in-game grid, but
-   fluid so the window can be resized. */
-.characters-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
-  gap: var(--gutter);
-  align-content: start;
+/* --- the sheet ---------------------------------------------------------- */
+
+.roster-scroll {
+  position: relative;
   overflow-y: auto;
+  overflow-x: hidden;
   min-height: 0;
-  /* Room for the tiles' offset shadows and hover lift. */
-  padding: 4px 10px 24px 4px;
+  padding: 0 30px;
+}
+
+/**
+ * The skew is what turns a grid into a composition. Tiles counter-skew their
+ * own faces (see AgentTile.css) so nothing is rendered on a slant.
+ *
+ * Columns are auto-filled so the block stays dense at any window width, with
+ * the near-zero gap making the cards read as one printed sheet.
+ */
+/**
+ * Skewing about the top-left corner lifts the right-hand edge by
+ * `width * tan(skew)` — roughly 9vw at this angle — which pushed the top-right
+ * tiles above the scroll container and clipped them in half.
+ *
+ * Skewing about the centre halves that displacement and splits it evenly, so a
+ * symmetric vertical pad clears it. The padding is in `vw` because the rise
+ * scales with the sheet's width, not its height.
+ */
+.roster-sheet {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(208px, 1fr));
+  gap: 4px;
+  align-content: start;
+  transform: skewY(var(--roster-skew));
+  transform-origin: center;
+  padding-block: 5.5vw 7vw;
+}
+
+/* Cropped corner brackets that frame the sheet. */
+.roster-corner {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  pointer-events: none;
+}
+
+.roster-corner.is-tl {
+  top: 8px;
+  left: 8px;
+  border-top: var(--edge) solid var(--gold);
+  border-left: var(--edge) solid var(--gold);
+}
+
+.roster-corner.is-br {
+  right: 10px;
+  bottom: 28px;
+  border-bottom: var(--edge) solid var(--ink-400);
+  border-right: var(--edge) solid var(--ink-400);
+}
+
+/* Narrow windows: drop the skew rather than squeeze unreadable slanted rows. */
+@media (max-width: 900px) {
+  .roster-sheet {
+    transform: none;
+    padding-block: 10px 24px;
+  }
+
+  .tile-face {
+    transform: none;
+  }
 }

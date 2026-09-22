@@ -34,7 +34,8 @@ from ..models import (
     SyncStatus,
 )
 from ..prydwen import HtmlPrydwenSource, PrydwenParseError, PrydwenUnavailable
-from .analysis import _normalise, run_analysis
+from ..prydwen.http import card_image_url, character_image_url
+from .analysis import _normalise, build_guide_index, find_guide, run_analysis
 from .hoyolab import HoyolabService
 from .metadata import MetadataService
 
@@ -201,6 +202,12 @@ class SyncService:
         progress.message = "Refreshing agent catalog"
         try:
             catalog = await self._metadata.fetch_catalog()
+            # Ranks for recommended W-Engines. A failure here must not cost us
+            # the catalog, which is the part the grid cannot do without.
+            try:
+                await self._metadata.fetch_engine_ranks()
+            except Exception:  # noqa: BLE001 - engines simply go unbadged
+                pass
             progress.state = SourceState.OK
             progress.total = progress.done = len(catalog)
             progress.message = f"{len(catalog)} agents in catalog"
@@ -298,37 +305,100 @@ class SyncService:
 
     def _recompute(self) -> None:
         guides = [AgentGuide.model_validate(row) for row in self._cache.all_guides()]
+        self._backfill_card_art(guides)
+        self._backfill_engine_ranks(guides)
         self._backfill_icons(guides)
         self._analysis = run_analysis(self._agents, self._builds, guides)
 
+    def _backfill_engine_ranks(self, guides: list[AgentGuide]) -> None:
+        """Stamp each recommended W-Engine with its real rank.
+
+        Prydwen's markup carries no rank, so this comes from the game data the
+        catalog already uses. Engines the map does not know keep an empty rank
+        and are shown without a badge - the UI never invents one.
+        """
+        ranks = self._metadata.engine_ranks_from_cache()
+        if not ranks:
+            return
+        by_name = {_normalise(name): rarity for name, rarity in ranks.items()}
+        for guide in guides:
+            for engine in guide.engines:
+                if not engine.rarity:
+                    engine.rarity = by_name.get(_normalise(engine.name), "")
+
+    @staticmethod
+    def _backfill_card_art(guides: list[AgentGuide]) -> None:
+        """Give team members their large portrait URL.
+
+        Guides cached before card art existed only carry the 160px thumbnail.
+        The large URL is a pure transform of it, so deriving it here upgrades
+        the existing cache without spending one of the day's syncs.
+        """
+        for guide in guides:
+            for team in guide.teams:
+                for member in team.members:
+                    if not member.card_icon and member.icon:
+                        member.card_icon = card_image_url(member.icon)
+
     def _backfill_icons(self, guides: list[AgentGuide]) -> None:
-        """Give un-owned agents a portrait.
+        """Give every agent the same kind of portrait.
 
         HoYoLAB only supplies art for agents the user owns, and hakush.in's
         published image URLs 404, so un-owned tiles would otherwise render as
-        bare initials. Prydwen's team rows carry a plain CDN portrait for every
-        agent they mention, which covers essentially the whole roster.
+        bare initials.
+
+        Two Prydwen sources, in order of coverage:
+
+        1. The agent's **own guide slug**, which yields the image URL directly.
+           This is the one that covers the whole roster.
+        2. The team rows, which mention a portrait for each member. This only
+           reaches agents somebody is recommended to play alongside, which is
+           why most A-ranks were left on HoYoLAB's 152x186 face crop and so
+           rendered visibly unlike the full-body cards around them.
         """
-        portraits: dict[str, str] = {}
+        by_slug: dict[str, tuple[str, str]] = {}
+        index = build_guide_index(guides)
+
+        portraits: dict[str, tuple[str, str]] = {}
         for guide in guides:
             for team in guide.teams:
                 for member in team.members:
                     if member.icon:
-                        portraits.setdefault(_normalise(member.name), member.icon)
-
-        if not portraits:
-            return
+                        # Guides cached before card art existed have no
+                        # card_icon; deriving it here means they benefit
+                        # without forcing a full refetch.
+                        card = member.card_icon or card_image_url(member.icon)
+                        portraits.setdefault(_normalise(member.name), (member.icon, card))
 
         for agent in self._agents:
-            if agent.square_icon:
+            guide = find_guide(agent, index)
+            if guide is not None and guide.slug:
+                icon = by_slug.get(guide.slug, ("", ""))[0]
+                if not icon:
+                    icon = character_image_url(guide.slug)
+                    by_slug[guide.slug] = (icon, card_image_url(icon))
+                self._apply_art(agent, *by_slug[guide.slug])
                 continue
+
             for key in (agent.name, agent.full_name):
-                icon = portraits.get(_normalise(key)) if key else None
-                if icon:
-                    agent.square_icon = icon
-                    if not agent.rectangle_icon:
-                        agent.rectangle_icon = icon
-                    break
+                found = portraits.get(_normalise(key)) if key else None
+                if found is None:
+                    continue
+                icon, card = found
+                self._apply_art(agent, icon, card)
+                break
+
+    @staticmethod
+    def _apply_art(agent: Agent, icon: str, card: str) -> None:
+        """Attach portrait URLs, without overwriting anything already set."""
+        # Card art is worth setting even on owned agents: HoYoLAB only supplies
+        # a 152x186 avatar, which cannot be shown large.
+        if card and not agent.card_icon:
+            agent.card_icon = card
+        if icon and not agent.square_icon:
+            agent.square_icon = icon
+            if not agent.rectangle_icon:
+                agent.rectangle_icon = icon
 
     def load_from_cache(self) -> None:
         """Populate the in-memory view at startup so the UI has something to

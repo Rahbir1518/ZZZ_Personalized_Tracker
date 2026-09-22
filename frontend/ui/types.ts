@@ -49,6 +49,9 @@ export interface Agent {
   faction_name: string
   square_icon: string
   rectangle_icon: string
+  /** 374x512 portrait. HoYoLAB's own art is 152x186 / 180x64 and cannot be
+   *  shown large without blurring or extreme cropping. */
+  card_icon: string
   owned: boolean
   level: number | null
   /** Mindscape / cinema level, 0-6. */
@@ -80,6 +83,8 @@ export interface DiscSetRecommendation {
 export interface EngineRecommendation {
   name: string
   icon: string
+  /** "S" / "A" / "B" from the game data; empty means no rank is known. */
+  rarity: string
   rank: number
   note: string
   rating: number
@@ -88,7 +93,10 @@ export interface EngineRecommendation {
 
 export interface TeamMember {
   name: string
+  /** 160x160 thumbnail; blurry above ~160px. */
   icon: string
+  /** 374x512 portrait, for anywhere the art is shown large. */
+  card_icon: string
   slug: string
 }
 
@@ -140,11 +148,22 @@ export interface TeamStatus {
   readiness: number
 }
 
+export interface FarmingAgent {
+  name: string
+  icon: string
+  owned: boolean
+}
+
 export interface FarmingPriority {
   label: string
   reason: string
   weight: number
   agent_names: string[]
+  /** "disc_set" carries the set icon; "agent" carries the agent's portrait. */
+  kind: string
+  icon: string
+  /** Everyone this target serves, owned or not. Un-owned ones render dimmed. */
+  agents: FarmingAgent[]
 }
 
 export interface Analysis {

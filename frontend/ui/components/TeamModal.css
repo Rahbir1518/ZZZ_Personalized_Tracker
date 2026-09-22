@@ -1,0 +1,251 @@
+/* Team overlay. Reuses .ov* shell rules from AgentModal.css. */
+
+.tm-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 20px;
+  padding-right: 56px;
+}
+
+.tm-title {
+  margin: 0 0 3px;
+  font-size: 2rem;
+  color: var(--white);
+}
+
+.tm-status {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: auto;
+}
+
+.tm-readiness {
+  display: grid;
+  gap: 3px;
+  width: 180px;
+}
+
+/* --- member columns ----------------------------------------------------- */
+
+/**
+ * One column per member, side by side like the in-game team screen. Columns
+ * are equal width so the three builds line up row for row and can be compared
+ * across rather than read one at a time.
+ */
+.tm-members {
+  display: grid;
+  grid-template-columns: repeat(var(--slots, 3), minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .tm-members {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+}
+
+.tm-col {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+  background: var(--ink-200);
+  border: var(--hair) solid var(--ink-300);
+}
+
+.tm-col.is-owned {
+  border-color: color-mix(in srgb, var(--gold) 45%, var(--ink-300));
+}
+
+/* --- portrait ----------------------------------------------------------- */
+
+/* Source art is roughly square, so keep the frame close to it and anchor the
+   crop to the top — faces sit in the upper half. */
+.tm-portrait {
+  position: relative;
+  aspect-ratio: 1 / 1.12;
+  overflow: hidden;
+  background: linear-gradient(160deg, var(--ink-300), var(--ink-100));
+}
+
+.tm-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+}
+
+/* Un-owned members read as ghosts, matching the roster. */
+.tm-col.is-missing .tm-portrait img {
+  filter: grayscale(1) brightness(0.45);
+}
+
+.tm-portrait-blank {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  font-size: 2.2rem;
+  color: var(--ink-400);
+}
+
+.tm-portrait-strip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px 9px;
+  background: linear-gradient(180deg, transparent, rgba(5, 5, 5, 0.9) 45%);
+}
+
+.tm-name {
+  font-size: 1.25rem;
+  line-height: 1;
+  color: var(--white);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tm-sub {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--font-tech);
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  color: var(--paper-dim);
+}
+
+.tm-sub b {
+  color: var(--gold);
+}
+
+.tm-notowned {
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+/* --- gear stack --------------------------------------------------------- */
+
+.tm-gear {
+  padding: 10px 12px 14px;
+}
+
+.tm-sub-head {
+  margin: 12px 0 5px;
+  font-family: var(--font-tech);
+  font-weight: 700;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+  border-bottom: var(--hair) solid var(--ink-300);
+  padding-bottom: 3px;
+}
+
+.tm-sub-head:first-child {
+  margin-top: 0;
+}
+
+.tm-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tm-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  min-width: 0;
+}
+
+.tm-row-text {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+}
+
+.tm-row-text strong {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.92rem;
+  letter-spacing: 0.02em;
+  color: var(--paper);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tm-slot,
+.tm-rank,
+.tm-pc {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  font-family: var(--font-tech);
+  font-weight: 700;
+  font-size: 0.6rem;
+  color: var(--paper-dim);
+  background: var(--ink-300);
+  border: var(--hair) solid var(--ink-400);
+}
+
+.tm-slot,
+.tm-rank {
+  width: 18px;
+  height: 18px;
+}
+
+.tm-pc {
+  width: 28px;
+  height: 18px;
+}
+
+.tm-pc.is-four {
+  color: var(--ink-000);
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.tm-rank {
+  color: var(--gold);
+}
+
+.tm-priority {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.9rem;
+  line-height: 1.25;
+  letter-spacing: 0.03em;
+  color: var(--paper);
+}
+
+.tm-mains {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tm-mains li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 0.78rem;
+  color: var(--paper-dim);
+}
+
+.tm-empty {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}

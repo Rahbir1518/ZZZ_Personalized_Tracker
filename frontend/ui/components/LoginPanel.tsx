@@ -9,7 +9,7 @@
 
 import { useState } from 'react'
 import { ApiError, api } from '../api'
-import { Panel } from './ComicBits'
+import { Panel, Tech } from './Ui'
 import './LoginPanel.css'
 
 const HOYOLAB_URL = 'https://www.hoyolab.com'
@@ -45,8 +45,8 @@ export function LoginPanel({ onAuthenticated }: Props): React.JSX.Element {
 
   return (
     <div className="login-screen">
-      <Panel tilt="left" className="login-panel">
-        <h1 className="display-outline login-title">Sign in to HoYoLAB</h1>
+      <Panel className="login-panel" tick>
+        <h1 className="display login-title">Sign in to HoYoLAB</h1>
 
         <p className="login-intro">
           Paste two cookies from your own HoYoLAB session. They stay on this machine, encrypted by
@@ -55,7 +55,7 @@ export function LoginPanel({ onAuthenticated }: Props): React.JSX.Element {
 
         <form onSubmit={(e) => void submit(e)} className="login-form">
           <label className="login-field">
-            <span>ltoken_v2</span>
+            <Tech>ltoken_v2</Tech>
             <input
               value={ltoken}
               onChange={(e) => setLtoken(e.target.value)}
@@ -67,7 +67,7 @@ export function LoginPanel({ onAuthenticated }: Props): React.JSX.Element {
           </label>
 
           <label className="login-field">
-            <span>ltuid_v2</span>
+            <Tech>ltuid_v2</Tech>
             <input
               value={ltuid}
               onChange={(e) => setLtuid(e.target.value)}
@@ -83,7 +83,7 @@ export function LoginPanel({ onAuthenticated }: Props): React.JSX.Element {
             <span>Remember me on this computer</span>
           </label>
 
-          <button type="submit" className="ink-button" disabled={busy}>
+          <button type="submit" className="btn btn-primary" disabled={busy}>
             {busy ? 'Checking…' : 'Connect'}
           </button>
         </form>
@@ -133,13 +133,13 @@ function LoginError({ error }: { error: ApiError }): React.JSX.Element {
 
   return (
     <div className={`login-error ${recordDisabled ? 'login-error-fixable' : ''}`} role="alert">
-      <strong className="display">{recordDisabled ? 'One setting to flip' : 'That did not work'}</strong>
+      <strong className="display">{recordDisabled ? 'One setting to flip' : 'Rejected'}</strong>
       <p>{error.message}</p>
       {error.hint !== '' && <p className="login-error-hint">{error.hint}</p>}
       {recordDisabled && (
         <button
           type="button"
-          className="ink-button ink-button-quiet"
+          className="btn"
           onClick={() => void window.tracker.openExternal(`${HOYOLAB_URL}/setting/privacy`)}
         >
           Open HoYoLAB settings

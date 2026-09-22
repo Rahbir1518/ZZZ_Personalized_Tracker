@@ -1,51 +1,158 @@
-.app {
+/* Shell layout: stage on the left, vertical rail welded to the right edge. */
+
+.shell {
+  position: relative;
+  z-index: 1;
   display: grid;
-  grid-template-rows: auto auto 1fr;
+  grid-template-columns: 1fr auto;
   height: 100vh;
-  padding: 18px 22px;
-  gap: 14px;
-  min-height: 0;
 }
 
-.app-header {
+.shell-stage {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 14px;
+  min-width: 0;
+  min-height: 0;
+  padding: 20px 20px 16px 30px;
+}
+
+.shell-main {
+  min-height: 0;
+  min-width: 0;
+}
+
+.shell-error {
+  min-width: 0;
+}
+
+/* --- top bar ------------------------------------------------------------ */
+
+.topbar {
   display: flex;
-  align-items: center;
-  gap: 18px;
+  align-items: flex-start;
+  gap: 20px;
   flex-wrap: wrap;
 }
 
-.app-title {
-  margin: 0;
-  font-size: 1.9rem;
-  transform: rotate(-1.5deg);
-}
-
-.app-tabs {
+.brand {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 11px;
 }
 
-.app-tabs .is-active {
-  transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0 var(--ink);
+/* A cut gold wedge, not a logo. */
+.brand-mark {
+  width: 22px;
+  height: 30px;
+  background: var(--gold);
+  clip-path: polygon(0 0, 100% 0, 100% 68%, 50% 100%, 0 68%);
 }
 
-/* Pushes the sync cluster to the right edge of the header. */
-.app-header > .sync {
-  margin-left: auto;
+.brand-text {
+  display: grid;
+  gap: 1px;
 }
 
-.app-error {
-  margin: 0;
+.brand-name {
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--white);
 }
 
-.app-main {
-  min-height: 0;
+/* --- vertical rail ------------------------------------------------------ */
+
+/**
+ * A light off-white slab on the right edge, angled along its inner side so it
+ * reads as a physical tab rather than a panel.
+ */
+.rail {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 26px;
+  width: 74px;
+  padding: 22px 0 26px;
+  background: linear-gradient(180deg, var(--paper) 0%, var(--paper-dim) 100%);
+  clip-path: polygon(26px 0, 100% 0, 100% 100%, 0 100%, 0 46px);
 }
 
-/* --- boot / failure screens ------------------------------------------ */
+/* Diagonal hatch over the slab, keeping it from reading as flat plastic. */
+.rail::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(5, 5, 5, 0.05) 0 1px,
+    transparent 1px 7px
+  );
+  pointer-events: none;
+}
+
+.rail-code {
+  writing-mode: vertical-rl;
+  color: rgba(5, 5, 5, 0.45);
+  letter-spacing: 0.3em;
+}
+
+.rail-tab {
+  position: relative;
+  padding: 14px 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: rgba(5, 5, 5, 0.42);
+  transition: color 120ms ease;
+}
+
+.rail-tab:hover {
+  color: var(--ink-000);
+}
+
+.rail-label {
+  writing-mode: vertical-rl;
+  /* Reads bottom-to-top, like an in-game side tab. */
+  transform: rotate(180deg);
+  font-size: 1.45rem;
+  letter-spacing: 0.16em;
+  color: inherit;
+}
+
+.rail-tab.is-active {
+  color: var(--ink-000);
+}
+
+/* Gold spine on the active tab, bleeding off the slab's inner edge. */
+.rail-tab.is-active::before {
+  content: '';
+  position: absolute;
+  left: -2px;
+  top: 6px;
+  bottom: 6px;
+  width: 4px;
+  background: var(--gold);
+}
+
+.rail-tab:focus-visible {
+  outline: var(--edge) solid var(--ink-000);
+  outline-offset: -4px;
+}
+
+.rail-cursor {
+  margin-top: auto;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  line-height: 1;
+  color: rgba(5, 5, 5, 0.5);
+}
+
+/* --- boot / failure ----------------------------------------------------- */
 
 .boot {
+  position: relative;
+  z-index: 1;
   display: grid;
   place-items: center;
   height: 100vh;
@@ -54,29 +161,43 @@
 
 .boot-text {
   font-size: 2.4rem;
+  letter-spacing: 0.4em;
+  color: var(--muted);
 }
 
-.boot-failed {
-  max-width: 54ch;
-  padding: 22px 26px;
-  background: var(--panel);
-  border: var(--ink-heavy) solid var(--ink);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-pop);
+.boot-fail {
+  max-width: 56ch;
 }
 
-.boot-failed h1 {
+.boot-fail-title {
   margin: 0 0 10px;
-  font-size: 1.8rem;
+  font-size: 1.6rem;
+  color: var(--alert);
 }
 
-.boot-failed p {
+.boot-fail p {
   margin: 0;
+  font-size: 0.9rem;
+  color: var(--paper-dim);
 }
 
-.boot-failed code {
+.boot-fail code {
   padding: 1px 6px;
-  background: var(--paper-deep);
-  border: 1px solid var(--ink);
-  border-radius: 4px;
+  color: var(--gold);
+  background: var(--ink-300);
+}
+
+/* Narrow windows: the rail becomes a slim strip. */
+@media (max-width: 900px) {
+  .rail {
+    width: 54px;
+  }
+
+  .rail-label {
+    font-size: 1.1rem;
+  }
+
+  .shell-stage {
+    padding-left: 16px;
+  }
 }

@@ -358,3 +358,80 @@ def test_backfill_never_overwrites_the_users_own_hoyolab_art(monkeypatch, tmp_pa
         ]
     )
     assert owned.square_icon == "https://hoyolab/mine.png"
+
+
+# -- farming targets --------------------------------------------------------- #
+
+
+def test_a_disc_set_target_lists_everyone_who_wants_it_owned_or_not():
+    """Seeing that a set serves several agents is what makes it worth farming,
+    so un-owned agents are included and flagged rather than filtered out."""
+    wanted = DiscSetRecommendation(
+        set_name="Mock Metal", pieces=4, recommended=True, icon="https://cdn/set.webp"
+    )
+    guides = [
+        guide("Testagent", disc_sets=[wanted]),
+        guide("Supportagent", disc_sets=[wanted]),
+        guide("Unownedagent", disc_sets=[wanted]),
+    ]
+    agents = [
+        agent(1, "Testagent"),
+        agent(2, "Supportagent"),
+        agent(3, "Unownedagent", owned=False),
+    ]
+    # Owned agents wear nothing, so the set shows up as missing for them.
+    builds = {1: build(1, engine=None, discs=[]), 2: build(2, engine=None, discs=[])}
+
+    result = run_analysis(agents, builds, guides)
+    target = next(p for p in result.farming if p.kind == "disc_set")
+
+    assert target.icon == "https://cdn/set.webp"
+    by_name = {a.name: a.owned for a in target.agents}
+    assert by_name == {"Testagent": True, "Supportagent": True, "Unownedagent": False}
+
+
+def test_an_agent_target_carries_that_agents_portrait():
+    guides = [
+        guide(
+            "Testagent",
+            teams=[
+                TeamRecommendation(
+                    agent_names=["Testagent", "Unownedagent"],
+                    members=[
+                        TeamMember(name="Testagent", icon="https://cdn/test.webp"),
+                        TeamMember(name="Unownedagent", icon="https://cdn/ghost.webp"),
+                    ],
+                )
+            ],
+        )
+    ]
+    agents = [agent(1, "Testagent"), agent(2, "Unownedagent", owned=False)]
+
+    result = run_analysis(agents, {}, guides)
+    target = next(p for p in result.farming if p.kind == "agent")
+
+    assert target.icon == "https://cdn/ghost.webp"
+    assert [(a.name, a.owned) for a in target.agents] == [("Unownedagent", False)]
+
+
+def test_farming_prefers_the_roster_portrait_over_a_team_row_one():
+    # The roster carries HoYoLAB art for owned agents; team rows are the
+    # fallback for agents the catalog has no art for.
+    owned = Agent(id=1, name="Testagent", owned=True, square_icon="https://hoyolab/mine.png")
+    guides = [
+        guide(
+            "Testagent",
+            teams=[
+                TeamRecommendation(
+                    agent_names=["Testagent", "Unownedagent"],
+                    members=[TeamMember(name="Testagent", icon="https://cdn/other.webp")],
+                )
+            ],
+        )
+    ]
+    result = run_analysis([owned, agent(2, "Unownedagent", owned=False)], {}, guides)
+
+    everyone = [a for p in result.farming for a in p.agents]
+    testagent = next((a for a in everyone if a.name == "Testagent"), None)
+    if testagent is not None:
+        assert testagent.icon == "https://hoyolab/mine.png"

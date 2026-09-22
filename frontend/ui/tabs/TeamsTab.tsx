@@ -6,15 +6,20 @@
  *                 farming priorities derived from the same join.
  */
 
-import { useMemo, useState } from 'react'
-import { EmptyState, InkMeter, Panel, SpeechBubble } from '../components/ComicBits'
-import type { Analysis, TeamMember, TeamStatus } from '../types'
+import { useMemo, useRef, useState } from 'react'
+import { AnimatePresence } from 'framer-motion'
+import { Chip, EmptyState, ItemIcon, Meter, Panel, Tech } from '../components/Ui'
+import { TeamModal } from '../components/TeamModal'
+import { AgentSearch, type Suggestion } from '../components/AgentSearch'
+import type { Agent, Analysis, FarmingPriority, TeamMember, TeamStatus } from '../types'
 import './TeamsTab.css'
 
 type SubTab = 'mine' | 'suggested'
 
 interface Props {
   analysis: Analysis | null
+  /** Roster, so a team member's name can be resolved to an agent id. */
+  agents: Agent[]
   loading: boolean
 }
 
@@ -24,9 +29,10 @@ function matchesQuery(team: TeamStatus, needle: string): boolean {
   return team.team.agent_names.some((name) => name.toLowerCase().includes(needle))
 }
 
-export function TeamsTab({ analysis, loading }: Props): React.JSX.Element {
+export function TeamsTab({ analysis, agents, loading }: Props): React.JSX.Element {
   const [sub, setSub] = useState<SubTab>('mine')
   const [query, setQuery] = useState('')
+  const [opened, setOpened] = useState<{ team: TeamStatus; origin: DOMRect } | null>(null)
 
   const allMine = analysis?.my_teams ?? []
   const allSuggested = analysis?.suggested_teams ?? []
@@ -46,6 +52,96 @@ export function TeamsTab({ analysis, loading }: Props): React.JSX.Element {
   const shown = sub === 'mine' ? mine.length : suggested.length
   const total = sub === 'mine' ? allMine.length : allSuggested.length
 
+  const bodyRef = useRef<HTMLDivElement>(null)
+  const gridRef = useRef<HTMLDivElement>(null)
+
+  /**
+   * How many teams in each sub-tab include a given agent. Counting both means
+   * a pick can move the user to whichever sub-tab actually has their teams,
+   * instead of silently filtering the current one down to nothing.
+   */
+  const teamCounts = useMemo(() => {
+    const counts = new Map<string, { mine: number; suggested: number }>()
+    const tally = (pool: TeamStatus[], key: 'mine' | 'suggested'): void => {
+      for (const status of pool) {
+        for (const name of status.team.agent_names) {
+          const entry = counts.get(name) ?? { mine: 0, suggested: 0 }
+          entry[key] += 1
+          counts.set(name, entry)
+        }
+      }
+    }
+    tally(allMine, 'mine')
+    tally(allSuggested, 'suggested')
+    return counts
+  }, [allMine, allSuggested])
+
+  /**
+   * Every agent on the roster is offered, not only the ones already on screen.
+   * Restricting the list to the current sub-tab's teams meant a player with no
+   * complete comps saw no suggestions at all — the dropdown looked broken when
+   * it was merely empty.
+   */
+  const suggestionsList: Suggestion[] = useMemo(() => {
+    const fromRoster = agents.map((agent) => {
+      const count = teamCounts.get(agent.name) ?? { mine: 0, suggested: 0 }
+      const total = count.mine + count.suggested
+      return {
+        name: agent.name,
+        icon: agent.card_icon || agent.square_icon,
+        owned: agent.owned,
+        weight: total,
+        meta: `${agent.owned ? 'Owned' : 'Not owned'} · ${total} team${total === 1 ? '' : 's'}`
+      }
+    })
+
+    // A guide can name an agent the catalog does not (alternate versions,
+    // mostly). Keep those rather than making them unsearchable.
+    const known = new Set(fromRoster.map((s) => s.name))
+    const extra: Suggestion[] = []
+    for (const [name, count] of teamCounts) {
+      if (known.has(name)) continue
+      const total = count.mine + count.suggested
+      extra.push({
+        name,
+        icon: '',
+        owned: false,
+        weight: total,
+        meta: `Not owned · ${total} team${total === 1 ? '' : 's'}`
+      })
+    }
+
+    return [...fromRoster, ...extra].sort((a, b) => a.name.localeCompare(b.name))
+  }, [agents, teamCounts])
+
+  /**
+   * Go to an agent's teams: switch to the sub-tab that has them, then bring
+   * the grid into view. Without the switch, picking an agent you only have
+   * partial comps for would land on an empty "My Teams".
+   */
+  const goToAgent = (name: string): void => {
+    const count = teamCounts.get(name)
+    if (count !== undefined && count.mine === 0 && count.suggested > 0) {
+      setSub('suggested')
+    } else if (count !== undefined && count.suggested === 0 && count.mine > 0) {
+      setSub('mine')
+    }
+
+    // Two frames: the first lets React commit the sub-tab switch and the new
+    // filter, the second measures a grid that actually exists.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const grid = gridRef.current
+        const body = bodyRef.current
+        if (grid === null || body === null) return
+        body.scrollTo({
+          top: Math.max(0, grid.offsetTop - body.offsetTop - 8),
+          behavior: 'smooth'
+        })
+      })
+    })
+  }
+
   return (
     <div className="teams">
       <div className="teams-subtabs" role="tablist" aria-label="Teams view">
@@ -53,7 +149,7 @@ export function TeamsTab({ analysis, loading }: Props): React.JSX.Element {
           type="button"
           role="tab"
           aria-selected={sub === 'mine'}
-          className={`ink-button ink-button-quiet ${sub === 'mine' ? 'is-active' : ''}`}
+          className={`btn ${sub === 'mine' ? 'btn-active' : ''}`}
           onClick={() => setSub('mine')}
         >
           My Teams ({allMine.length})
@@ -62,19 +158,19 @@ export function TeamsTab({ analysis, loading }: Props): React.JSX.Element {
           type="button"
           role="tab"
           aria-selected={sub === 'suggested'}
-          className={`ink-button ink-button-quiet ${sub === 'suggested' ? 'is-active' : ''}`}
+          className={`btn ${sub === 'suggested' ? 'btn-active' : ''}`}
           onClick={() => setSub('suggested')}
         >
           Suggested ({allSuggested.length})
         </button>
 
-        <input
+        <AgentSearch
           className="teams-search"
-          type="search"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Find a team by agent…"
-          aria-label="Filter teams by agent name"
+          onChange={setQuery}
+          onPick={goToAgent}
+          suggestions={suggestionsList}
+          placeholder="Find a team by agent"
         />
 
         {filtering && (
@@ -84,7 +180,7 @@ export function TeamsTab({ analysis, loading }: Props): React.JSX.Element {
         )}
       </div>
 
-      <div className="teams-body">
+      <div className="teams-body" ref={bodyRef}>
         {sub === 'mine' ? (
           mine.length === 0 ? (
             <EmptyState
@@ -99,23 +195,24 @@ export function TeamsTab({ analysis, loading }: Props): React.JSX.Element {
                   : 'Once you own every member of a recommended comp, it shows up here.'}
             </EmptyState>
           ) : (
-            <div className="teams-grid">
-              {mine.map((team, index) => (
-                <TeamCard key={team.team.agent_names.join('|')} team={team} index={index} />
+            <div className="teams-grid" ref={gridRef}>
+              {mine.map((team) => (
+                <TeamCard
+                  key={team.team.agent_names.join('|')}
+                  team={team}
+                  onOpen={(t, origin) => setOpened({ team: t, origin })}
+                />
               ))}
             </div>
           )
         ) : (
           <div className="teams-suggested">
             {farming.length > 0 && (
-              <Panel tilt="right" className="teams-farming">
+              <Panel className="teams-farming" tick>
                 <h3 className="display teams-farming-title">Farm next</h3>
-                <ol className="teams-farming-list">
+                <ol className="farm-list">
                   {farming.map((priority) => (
-                    <li key={priority.label}>
-                      <strong>{priority.label}</strong>
-                      <span className="teams-farming-reason">{priority.reason}</span>
-                    </li>
+                    <FarmRow key={priority.label} priority={priority} />
                   ))}
                 </ol>
               </Panel>
@@ -132,20 +229,73 @@ export function TeamsTab({ analysis, loading }: Props): React.JSX.Element {
                   : 'Run a sync to pull recommendations.'}
               </EmptyState>
             ) : (
-              <div className="teams-grid">
-                {suggested.map((team, index) => (
-                  <TeamCard key={team.team.agent_names.join('|')} team={team} index={index} />
+              <div className="teams-grid" ref={gridRef}>
+                {suggested.map((team) => (
+                  <TeamCard
+                    key={team.team.agent_names.join('|')}
+                    team={team}
+                    onOpen={(t, origin) => setOpened({ team: t, origin })}
+                  />
                 ))}
               </div>
             )}
           </div>
         )}
       </div>
+
+      <AnimatePresence>
+        {opened !== null && (
+          <TeamModal
+            team={opened.team}
+            agents={agents}
+            origin={opened.origin}
+            onClose={() => setOpened(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }
 
-function TeamCard({ team, index }: { team: TeamStatus; index: number }): React.JSX.Element {
+/** One farming target: the set (or agent) art, then who it serves. */
+function FarmRow({ priority }: { priority: FarmingPriority }): React.JSX.Element {
+  return (
+    <li className="farm-row">
+      <ItemIcon src={priority.icon} size={58} />
+
+      <div className="farm-text">
+        <strong>{priority.label}</strong>
+        <span className="farm-reason">{priority.reason}</span>
+
+        {priority.agents.length > 0 && (
+          <ul className="farm-users">
+            {priority.agents.map((user) => (
+              <li
+                key={user.name}
+                className={`farm-user ${user.owned ? 'is-owned' : 'is-missing'}`}
+                title={user.owned ? user.name : `${user.name} — not owned`}
+              >
+                {user.icon !== '' ? (
+                  <img src={user.icon} alt={user.name} loading="lazy" draggable={false} />
+                ) : (
+                  <span className="farm-user-blank">{user.name.slice(0, 2)}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </li>
+  )
+}
+
+function TeamCard({
+  team,
+  onOpen
+}: {
+  team: TeamStatus
+  onOpen: (team: TeamStatus, origin: DOMRect) => void
+}): React.JSX.Element {
   const missing = team.missing_members.length
   const owned = new Set(team.owned_members)
 
@@ -154,16 +304,24 @@ function TeamCard({ team, index }: { team: TeamStatus; index: number }): React.J
   const roster: TeamMember[] =
     team.team.members.length > 0
       ? team.team.members
-      : team.team.agent_names.map((name) => ({ name, icon: '', slug: '' }))
+      : team.team.agent_names.map((name) => ({ name, icon: '', card_icon: '', slug: '' }))
 
   return (
-    <Panel tilt={index % 2 === 0 ? 'left' : 'right'} className="team-card">
+    <Panel className="team-card">
+      <button
+        type="button"
+        className="team-card-hit"
+        onClick={(e) =>
+          onOpen(team, (e.currentTarget.parentElement ?? e.currentTarget).getBoundingClientRect())
+        }
+        aria-label={`Open ${team.team.agent_names.join(', ')}`}
+      />
       <header className="team-card-head">
         <h3 className="display team-card-title">{team.team.agent_names.join('  ·  ')}</h3>
         {team.fieldable ? (
-          <span className="team-chip team-chip-ready">Ready</span>
+          <Chip tone="good">Ready</Chip>
         ) : (
-          <span className="team-chip team-chip-missing">{missing} missing</span>
+          <Chip tone="gold">{missing} missing</Chip>
         )}
       </header>
 
@@ -193,16 +351,16 @@ function TeamCard({ team, index }: { team: TeamStatus; index: number }): React.J
 
       {team.fieldable && (
         <div className="team-card-readiness">
-          <span className="team-card-label">Build readiness</span>
-          <InkMeter
+          <Tech>Build readiness</Tech>
+          <Meter
             value={team.readiness}
-            tone={team.readiness > 0.8 ? 'good' : team.readiness > 0.5 ? 'pow' : 'warn'}
+            tone={team.readiness > 0.8 ? 'good' : team.readiness > 0.5 ? 'gold' : 'warn'}
           />
         </div>
       )}
 
       {!team.fieldable && missing === 1 && (
-        <SpeechBubble>One agent away — {team.missing_members[0]} unlocks this comp.</SpeechBubble>
+        <p className="team-card-hint">One agent away — {team.missing_members[0]} unlocks this comp.</p>
       )}
     </Panel>
   )
