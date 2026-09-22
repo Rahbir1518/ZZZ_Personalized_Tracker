@@ -58,28 +58,51 @@ class HoyolabService:
         return genshin.Client(jar, game=genshin.Game.ZZZ)
 
     async def login(self, cookies: CookiePayload) -> AuthResult:
-        """Validate cookies with one real ZZZ call.
+        """Validate cookies and resolve the account's ZZZ UID.
 
-        Raises the underlying genshin exception; the router translates it so the
-        "game record disabled" case stays distinguishable from bad cookies.
+        Two calls, because they prove different things:
+
+        * ``get_game_accounts`` proves the cookies work and is the **only**
+          source of the UID, nickname and level. ``ZZZUserStats`` has no ``uid``
+          field, so reading one off it silently yields "" and everything cached
+          under it becomes unreachable.
+        * ``get_zzz_user`` proves the ZZZ battle record is actually readable,
+          which is the "game record disabled" case the UI handles separately.
+
+        Raises the underlying genshin exception; the router translates it.
         """
         client = self._build_client(cookies)
 
-        # get_zzz_user is the cheapest call that proves both that the cookies
-        # work and that the ZZZ battle record is readable.
-        stats = await client.get_zzz_user()
+        account = self._pick_zzz_account(await client.get_game_accounts())
+
+        # Validates battle-record access. Raises DataNotPublic when it is off.
+        await client.get_zzz_user()
 
         self._client = client
-        self._uid = str(getattr(stats, "uid", "") or "")
-        self._nickname = str(getattr(stats, "nickname", "") or "")
+        self._uid = str(getattr(account, "uid", "") or "") if account is not None else ""
+        self._nickname = str(getattr(account, "nickname", "") or "") if account is not None else ""
 
         return AuthResult(
             ok=True,
             uid=self._uid,
             nickname=self._nickname,
-            level=int(getattr(stats, "level", 0) or 0),
-            region=str(getattr(stats, "region", "") or ""),
+            level=int(getattr(account, "level", 0) or 0) if account is not None else 0,
+            region=str(getattr(account, "server_name", "") or "") if account is not None else "",
         )
+
+    @staticmethod
+    def _pick_zzz_account(accounts: object) -> object | None:
+        """Find the ZZZ account among every HoYoverse game bound to the login.
+
+        ZZZ's ``game_biz`` is ``nap_<region>`` ("nap" being the game's internal
+        codename), which is how it is told apart from Genshin and Star Rail.
+        """
+        for account in accounts or []:  # type: ignore[union-attr]
+            biz = str(getattr(account, "game_biz", "") or "")
+            game = getattr(account, "game", None)
+            if biz.startswith("nap") or getattr(game, "value", "") == "nap":
+                return account
+        return None
 
     def logout(self) -> None:
         self._client = None

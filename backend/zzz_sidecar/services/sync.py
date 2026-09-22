@@ -186,8 +186,10 @@ class SyncService:
             return self._agents_from_cache()
 
     def _agents_from_cache(self) -> list[Agent]:
-        uid = self._hoyolab.uid
-        cached = self._cache.get_roster(uid) if uid else None
+        # Do not skip the lookup when the UID is empty: the cache falls back to
+        # the single stored roster, and gating here is what made a restart show
+        # an empty grid until the user synced again.
+        cached = self._cache.get_roster(self._hoyolab.uid)
         if cached is None:
             return [a for a in self._agents if a.owned]
         return [Agent.model_validate(row) for row in cached.get("agents", [])]
@@ -336,10 +338,8 @@ class SyncService:
         owned = self._agents_from_cache()
         self._agents = self._merge_roster(catalog, owned)
 
-        uid = self._hoyolab.uid
-        if uid:
-            self._builds = {
-                agent_id: AgentBuild.model_validate(payload)
-                for agent_id, payload in self._cache.get_builds(uid).items()
-            }
+        self._builds = {
+            agent_id: AgentBuild.model_validate(payload)
+            for agent_id, payload in self._cache.get_builds(self._hoyolab.uid).items()
+        }
         self._recompute()

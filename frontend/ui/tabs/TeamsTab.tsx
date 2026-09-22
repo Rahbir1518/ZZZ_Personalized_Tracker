@@ -6,7 +6,7 @@
  *                 farming priorities derived from the same join.
  */
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { EmptyState, InkMeter, Panel, SpeechBubble } from '../components/ComicBits'
 import type { Analysis, TeamMember, TeamStatus } from '../types'
 import './TeamsTab.css'
@@ -18,12 +18,33 @@ interface Props {
   loading: boolean
 }
 
+/** Match a team on any member's name. */
+function matchesQuery(team: TeamStatus, needle: string): boolean {
+  if (needle === '') return true
+  return team.team.agent_names.some((name) => name.toLowerCase().includes(needle))
+}
+
 export function TeamsTab({ analysis, loading }: Props): React.JSX.Element {
   const [sub, setSub] = useState<SubTab>('mine')
+  const [query, setQuery] = useState('')
 
-  const mine = analysis?.my_teams ?? []
-  const suggested = analysis?.suggested_teams ?? []
+  const allMine = analysis?.my_teams ?? []
+  const allSuggested = analysis?.suggested_teams ?? []
   const farming = analysis?.farming ?? []
+
+  const needle = query.trim().toLowerCase()
+  const mine = useMemo(
+    () => allMine.filter((team) => matchesQuery(team, needle)),
+    [allMine, needle]
+  )
+  const suggested = useMemo(
+    () => allSuggested.filter((team) => matchesQuery(team, needle)),
+    [allSuggested, needle]
+  )
+
+  const filtering = needle !== ''
+  const shown = sub === 'mine' ? mine.length : suggested.length
+  const total = sub === 'mine' ? allMine.length : allSuggested.length
 
   return (
     <div className="teams">
@@ -35,7 +56,7 @@ export function TeamsTab({ analysis, loading }: Props): React.JSX.Element {
           className={`ink-button ink-button-quiet ${sub === 'mine' ? 'is-active' : ''}`}
           onClick={() => setSub('mine')}
         >
-          My Teams ({mine.length})
+          My Teams ({allMine.length})
         </button>
         <button
           type="button"
@@ -44,17 +65,38 @@ export function TeamsTab({ analysis, loading }: Props): React.JSX.Element {
           className={`ink-button ink-button-quiet ${sub === 'suggested' ? 'is-active' : ''}`}
           onClick={() => setSub('suggested')}
         >
-          Suggested ({suggested.length})
+          Suggested ({allSuggested.length})
         </button>
+
+        <input
+          className="teams-search"
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Find a team by agent…"
+          aria-label="Filter teams by agent name"
+        />
+
+        {filtering && (
+          <span className="teams-search-count">
+            {shown} of {total}
+          </span>
+        )}
       </div>
 
       <div className="teams-body">
         {sub === 'mine' ? (
           mine.length === 0 ? (
-            <EmptyState title={loading ? 'Crunching…' : 'No full teams yet'}>
+            <EmptyState
+              title={
+                loading ? 'Crunching…' : filtering ? 'No match' : 'No full teams yet'
+              }
+            >
               {loading
                 ? 'Joining your roster with the recommendations.'
-                : 'Once you own every member of a recommended comp, it shows up here.'}
+                : filtering
+                  ? `No team here includes an agent matching "${query.trim()}".`
+                  : 'Once you own every member of a recommended comp, it shows up here.'}
             </EmptyState>
           ) : (
             <div className="teams-grid">
@@ -80,8 +122,14 @@ export function TeamsTab({ analysis, loading }: Props): React.JSX.Element {
             )}
 
             {suggested.length === 0 ? (
-              <EmptyState title={loading ? 'Crunching…' : 'Nothing to suggest yet'}>
-                Run a sync to pull recommendations.
+              <EmptyState
+                title={
+                  loading ? 'Crunching…' : filtering ? 'No match' : 'Nothing to suggest yet'
+                }
+              >
+                {filtering
+                  ? `No suggested team includes an agent matching "${query.trim()}".`
+                  : 'Run a sync to pull recommendations.'}
               </EmptyState>
             ) : (
               <div className="teams-grid">

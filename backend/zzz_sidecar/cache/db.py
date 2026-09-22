@@ -118,7 +118,18 @@ class Cache:
         )
 
     def get_roster(self, uid: str) -> dict[str, Any] | None:
+        """The cached roster for a UID.
+
+        Falls back to the most recent roster of *any* UID when there is no exact
+        match. This app serves one signed-in person, so "the stored roster" is
+        unambiguous, and the fallback means a missing or changed UID degrades to
+        slightly stale data rather than an empty screen.
+        """
         row = self._read_one("SELECT payload FROM roster_snapshot WHERE uid = ?", (uid,))
+        if row is None:
+            row = self._read_one(
+                "SELECT payload FROM roster_snapshot ORDER BY fetched_at DESC LIMIT 1"
+            )
         return None if row is None else json.loads(row["payload"])
 
     def put_build(self, uid: str, agent_id: int, payload: dict[str, Any]) -> None:
@@ -129,7 +140,14 @@ class Cache:
         )
 
     def get_builds(self, uid: str) -> dict[int, dict[str, Any]]:
+        """Equipped builds for a UID, with the same single-user fallback as
+        ``get_roster`` so the two can never disagree about what is cached."""
         rows = self._read_all("SELECT agent_id, payload FROM agent_build WHERE uid = ?", (uid,))
+        if not rows:
+            rows = self._read_all(
+                "SELECT agent_id, payload FROM agent_build "
+                "WHERE uid = (SELECT uid FROM agent_build ORDER BY fetched_at DESC LIMIT 1)"
+            )
         return {int(r["agent_id"]): json.loads(r["payload"]) for r in rows}
 
     # -- sync log ----------------------------------------------------------- #
