@@ -1,0 +1,66 @@
+.characters {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 14px;
+  height: 100%;
+  min-height: 0;
+}
+
+.characters-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.characters-filters {
+  display: flex;
+  gap: 6px;
+}
+
+.characters-filters .ink-button {
+  font-size: 0.9rem;
+  padding: 6px 14px;
+}
+
+.characters-filters .is-active {
+  background: var(--pow);
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+.characters-search {
+  flex: 1 1 200px;
+  max-width: 300px;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 0.9rem;
+  background: var(--panel);
+  border: var(--ink-bold) solid var(--ink);
+  border-radius: var(--radius);
+}
+
+.characters-search:focus-visible {
+  outline: var(--ink-bold) solid var(--zap);
+  outline-offset: 2px;
+}
+
+.characters-count {
+  margin-left: auto;
+  font-family: var(--font-display);
+  letter-spacing: 0.8px;
+  font-size: 1rem;
+}
+
+/* ~6 columns at the default window width, matching the in-game grid, but
+   fluid so the window can be resized. */
+.characters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: var(--gutter);
+  align-content: start;
+  overflow-y: auto;
+  min-height: 0;
+  /* Room for the tiles' offset shadows and hover lift. */
+  padding: 4px 10px 24px 4px;
+}

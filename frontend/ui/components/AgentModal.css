@@ -1,0 +1,219 @@
+.modal-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(18, 16, 14, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+/* The bubble is positioned absolutely so Framer Motion can animate it from the
+   clicked tile's real rect to fullscreen. */
+.modal-bubble {
+  position: absolute;
+  background: var(--panel);
+  border: var(--ink-heavy) solid var(--ink);
+  box-shadow: var(--shadow-pop-lg);
+  overflow: hidden;
+}
+
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  min-width: 44px;
+  padding: 6px 12px;
+  background: var(--danger);
+  color: var(--panel);
+}
+
+.modal-content {
+  height: 100%;
+  overflow-y: auto;
+  padding: 26px 30px;
+}
+
+.modal-loading,
+.modal-error {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  font-size: 1.4rem;
+}
+
+.modal-error {
+  color: var(--danger);
+}
+
+/* --- detail layout ---------------------------------------------------- */
+
+.detail {
+  display: grid;
+  gap: 18px;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-right: 60px; /* clear of the close button */
+}
+
+.detail-portrait {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  background: var(--paper-deep);
+  border: var(--ink-bold) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop-sm);
+}
+
+.detail-name {
+  margin: 0;
+  font-size: 2.4rem;
+}
+
+.detail-meta {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  display: block;
+}
+
+.detail-badge {
+  margin-left: auto;
+  transform: rotate(-7deg);
+}
+
+.detail-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--gutter);
+  align-items: start;
+}
+
+.detail-col {
+  padding: 14px 16px;
+  background: var(--paper);
+  border: var(--ink-bold) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop-sm);
+}
+
+.detail-subhead {
+  margin: 0 0 10px;
+  font-size: 1.25rem;
+  letter-spacing: 1px;
+}
+
+.detail-block {
+  margin-bottom: 14px;
+}
+
+.detail-block h4 {
+  margin: 0 0 5px;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  letter-spacing: 0.8px;
+}
+
+.detail-empty {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
+.detail-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.9rem;
+}
+
+.detail-list li {
+  margin-bottom: 3px;
+}
+
+.detail-list .detail-meta {
+  display: inline;
+}
+
+.detail-engine {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.detail-engine img {
+  width: 46px;
+  height: 46px;
+  border: var(--ink-hair) solid var(--ink);
+  border-radius: 6px;
+  background: var(--paper-deep);
+}
+
+/* --- discs ------------------------------------------------------------ */
+
+.detail-discs {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.detail-disc {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  font-size: 0.85rem;
+}
+
+.detail-disc-slot {
+  display: grid;
+  place-items: center;
+  flex: 0 0 24px;
+  height: 24px;
+  background: var(--pow);
+  border: var(--ink-hair) solid var(--ink);
+  border-radius: 5px;
+  font-size: 0.8rem;
+}
+
+.detail-substats {
+  display: block;
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+}
+
+.detail-priority {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  letter-spacing: 0.5px;
+}
+
+.detail-ok {
+  margin: 0;
+  color: color-mix(in srgb, var(--good) 70%, var(--ink));
+  font-weight: 700;
+}
+
+.detail-warn {
+  margin: 0;
+  color: color-mix(in srgb, var(--danger) 70%, var(--ink));
+  font-weight: 700;
+}
+
+.detail-callouts {
+  margin: 0;
+  padding-left: 18px;
+  font-family: var(--font-display);
+  letter-spacing: 0.6px;
+}

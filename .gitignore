@@ -1,18 +1,65 @@
-# Build and Release Folders
-bin-debug/
-bin-release/
-[Oo]bj/
-[Bb]in/
+# ---------------------------------------------------------------------------
+# Secrets & user data — NOTHING here may ever be committed.
+# This app handles HoYoLAB session cookies and personal account dumps.
+# ---------------------------------------------------------------------------
+*.env
+.env.*
+credentials.json
+cookies.json
+cookies.txt
+*.cookies
+/userdata/
+**/account-dump*.json
 
-# Other files and folders
-.settings/
+# Local caches populated at runtime (Prydwen guides, hakushin metadata, roster)
+*.sqlite
+*.sqlite3
+*.db
+/.cache/
+**/.cache/
+cache/
+!backend/zzz_sidecar/cache/
+!backend/zzz_sidecar/cache/**
 
-# Executables
-*.swf
-*.air
-*.ipa
-*.apk
+# Fetched third-party content — never redistribute Prydwen or HoYoverse data.
+/backend/.prydwen-cache/
+/backend/.hakushin-cache/
 
-# Project files, i.e. `.project`, `.actionScriptProperties` and `.flexProperties`
-# should NOT be excluded as they contain compiler settings and other important
-# information for Eclipse / Flash Builder.
+# ---------------------------------------------------------------------------
+# Node / Electron
+# ---------------------------------------------------------------------------
+node_modules/
+out/
+dist/
+release/
+.vite/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---------------------------------------------------------------------------
+# Python sidecar
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# PyInstaller output
+/backend/build/
+/backend/dist/
+/resources/sidecar/
+
+# ---------------------------------------------------------------------------
+# Editors / OS
+# ---------------------------------------------------------------------------
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db

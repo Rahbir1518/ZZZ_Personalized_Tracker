@@ -1,0 +1,114 @@
+/* Styles for the shared comic primitives. Tokens come from styles/comic.css. */
+
+.comic-heading {
+  margin: 0 0 12px;
+  font-size: 1.8rem;
+}
+
+/* --- InkMeter --------------------------------------------------------- */
+
+.ink-meter {
+  position: relative;
+  height: 22px;
+  background: var(--paper-deep);
+  border: var(--ink-hair) solid var(--ink);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.ink-meter-fill {
+  height: 100%;
+  background: var(--pow);
+  border-right: var(--ink-hair) solid var(--ink);
+  transition: width 240ms ease;
+}
+
+.ink-meter-good {
+  background: var(--good);
+}
+.ink-meter-warn {
+  background: var(--warn);
+}
+.ink-meter-bad {
+  background: var(--danger);
+}
+
+.ink-meter-label {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  letter-spacing: 0.6px;
+  /* Sits on top of both the filled and unfilled halves, so outline it. */
+  -webkit-text-stroke: 3px var(--panel);
+  paint-order: stroke fill;
+}
+
+/* --- EmptyState ------------------------------------------------------- */
+
+.empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--ink-soft);
+}
+
+.empty-state-mark {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  font-size: 2.4rem;
+  color: var(--ink);
+  background: var(--pow);
+  border: var(--ink-bold) solid var(--ink);
+  border-radius: 50%;
+  box-shadow: var(--shadow-pop-sm);
+  transform: rotate(-6deg);
+}
+
+.empty-state h3 {
+  margin: 4px 0 0;
+  font-size: 1.4rem;
+  color: var(--ink);
+}
+
+.empty-state p {
+  margin: 0;
+  max-width: 44ch;
+}
+
+/* --- ErrorStrip ------------------------------------------------------- */
+
+.error-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--danger);
+  color: var(--panel);
+  border: var(--ink-bold) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop-sm);
+}
+
+.error-strip strong {
+  font-size: 1.2rem;
+  letter-spacing: 1px;
+}
+
+.error-strip-hint {
+  flex-basis: 100%;
+  font-style: normal;
+  font-size: 0.9rem;
+  opacity: 0.92;
+}
+
+.error-strip .ink-button {
+  margin-left: auto;
+}

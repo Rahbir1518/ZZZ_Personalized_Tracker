@@ -1,0 +1,113 @@
+.sync {
+  display: grid;
+  gap: 6px;
+  justify-items: end;
+}
+
+.sync-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sync-button {
+  min-width: 118px;
+}
+
+/* The completion burst pops out over the header without shifting layout. */
+.sync-celebrate {
+  position: absolute;
+  right: 100%;
+  margin-right: 12px;
+  animation: burst-in 260ms cubic-bezier(0.2, 1.6, 0.4, 1);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+@keyframes burst-in {
+  from {
+    transform: scale(0.2) rotate(-25deg);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) rotate(-6deg);
+    opacity: 1;
+  }
+}
+
+.sync-sources {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sync-source {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  background: var(--panel);
+  border: var(--ink-hair) solid var(--ink);
+  border-radius: 999px;
+}
+
+.sync-source-name {
+  font-family: var(--font-display);
+  letter-spacing: 0.5px;
+}
+
+.sync-source-detail {
+  color: var(--ink-soft);
+}
+
+.sync-source-ok {
+  background: color-mix(in srgb, var(--good) 30%, var(--panel));
+}
+
+.sync-source-failed {
+  background: color-mix(in srgb, var(--danger) 30%, var(--panel));
+}
+
+.sync-source-cancelled {
+  background: var(--paper-deep);
+}
+
+/* A quiet pulse while a source is in flight — the numbers carry the detail. */
+.sync-source-running {
+  background: color-mix(in srgb, var(--zap) 30%, var(--panel));
+  animation: source-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes source-pulse {
+  50% {
+    opacity: 0.62;
+  }
+}
+
+.sync-note {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  max-width: 34ch;
+  text-align: right;
+}
+
+.sync-note-error {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.sync-quota {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+
+.sync-quota-spent {
+  color: var(--danger);
+  font-weight: 700;
+}

@@ -1,0 +1,38 @@
+appId: gg.local.zzz-team-tracker
+productName: ZZZ Team Tracker
+copyright: MIT licensed. Not affiliated with HoYoverse or Prydwen.
+
+directories:
+  buildResources: build
+  output: release
+
+files:
+  - out/**
+  - package.json
+  - '!**/*.map'
+
+# The PyInstaller sidecar binary is produced by scripts/build-sidecar.ps1 into
+# resources/sidecar/ and shipped unpacked so it can be spawned as a process.
+extraResources:
+  - from: resources/sidecar
+    to: sidecar
+    filter: ['**/*']
+
+asar: true
+asarUnpack:
+  - resources/sidecar/**
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  artifactName: ${productName}-${version}-setup.${ext}
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+  deleteAppDataOnUninstall: false
+
+# No auto-update: releases are downloaded manually from GitHub.
+publish: null

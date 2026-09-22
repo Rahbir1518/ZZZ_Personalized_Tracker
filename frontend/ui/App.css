@@ -1,0 +1,82 @@
+.app {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  height: 100vh;
+  padding: 18px 22px;
+  gap: 14px;
+  min-height: 0;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.app-title {
+  margin: 0;
+  font-size: 1.9rem;
+  transform: rotate(-1.5deg);
+}
+
+.app-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.app-tabs .is-active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+/* Pushes the sync cluster to the right edge of the header. */
+.app-header > .sync {
+  margin-left: auto;
+}
+
+.app-error {
+  margin: 0;
+}
+
+.app-main {
+  min-height: 0;
+}
+
+/* --- boot / failure screens ------------------------------------------ */
+
+.boot {
+  display: grid;
+  place-items: center;
+  height: 100vh;
+  padding: 24px;
+}
+
+.boot-text {
+  font-size: 2.4rem;
+}
+
+.boot-failed {
+  max-width: 54ch;
+  padding: 22px 26px;
+  background: var(--panel);
+  border: var(--ink-heavy) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+}
+
+.boot-failed h1 {
+  margin: 0 0 10px;
+  font-size: 1.8rem;
+}
+
+.boot-failed p {
+  margin: 0;
+}
+
+.boot-failed code {
+  padding: 1px 6px;
+  background: var(--paper-deep);
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+}

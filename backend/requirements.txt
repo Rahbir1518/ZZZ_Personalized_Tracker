@@ -1,0 +1,12 @@
+# Runtime dependencies for the sidecar. Pinned loosely; re-verify the ZZZ API
+# surface (see the brief's appendix) after any genshin.py bump.
+#
+# Note: hakushin-py is deliberately NOT here. Its published release cannot
+# parse current ZZZ data (its element enum predates element 204), so the
+# metadata service reads the same hakush.in CDN JSON directly via httpx.
+genshin==1.7.*
+fastapi==0.141.*
+uvicorn[standard]==0.53.*
+pydantic==2.13.*
+httpx==0.28.*
+selectolax==0.4.*

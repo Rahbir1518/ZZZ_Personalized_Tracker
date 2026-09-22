@@ -1,0 +1,41 @@
+{
+  "name": "zzz-team-tracker",
+  "version": "0.1.0",
+  "description": "Local desktop tracker that cross-references your ZZZ account roster with community build recommendations.",
+  "license": "MIT",
+  "private": true,
+  "main": "./out/main/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "electron-vite dev",
+    "start": "electron-vite preview",
+    "build": "npm run typecheck && electron-vite build",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
+    "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
+    "sidecar:install": "python -m venv backend\\.venv && backend\\.venv\\Scripts\\python -m pip install -r backend\\requirements-dev.txt",
+    "sidecar:dev": "cd backend && .venv\\Scripts\\python -m zzz_sidecar --port 8777 --reload",
+    "sidecar:test": "backend\\.venv\\Scripts\\python -m pytest backend\\tests -q",
+    "sidecar:build": "powershell -ExecutionPolicy Bypass -File scripts/build-sidecar.ps1",
+    "dist": "npm run build && npm run sidecar:build && electron-builder --win --publish never"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.103.2",
+    "framer-motion": "^13.4.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^44.4.3",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "typescript": "^7.0.2",
+    "vite": "^7.3.6"
+  }
+}

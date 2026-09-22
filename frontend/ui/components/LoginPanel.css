@@ -1,0 +1,126 @@
+.login-screen {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.login-panel {
+  width: min(560px, 100%);
+}
+
+.login-title {
+  margin: 0 0 10px;
+  font-size: 2rem;
+}
+
+.login-intro {
+  margin: 0 0 18px;
+  color: var(--ink-soft);
+}
+
+.login-form {
+  display: grid;
+  gap: 14px;
+}
+
+.login-field {
+  display: grid;
+  gap: 5px;
+}
+
+.login-field span {
+  font-family: var(--font-display);
+  letter-spacing: 0.8px;
+  font-size: 0.95rem;
+}
+
+.login-field input {
+  font-family: ui-monospace, 'Cascadia Mono', monospace;
+  font-size: 0.9rem;
+  padding: 9px 12px;
+  color: var(--ink);
+  background: var(--paper);
+  border: var(--ink-hair) solid var(--ink);
+  border-radius: 8px;
+}
+
+.login-field input:focus-visible {
+  outline: var(--ink-bold) solid var(--zap);
+  outline-offset: 2px;
+}
+
+.login-remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.login-error {
+  display: grid;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: var(--danger);
+  color: var(--panel);
+  border: var(--ink-bold) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop-sm);
+}
+
+/* The "battle record is off" case is a fixable setting, not a failure —
+   colour it as guidance so it reads differently from bad cookies. */
+.login-error-fixable {
+  background: var(--warn);
+  color: var(--ink);
+}
+
+.login-error p {
+  margin: 0;
+}
+
+.login-error-hint {
+  font-size: 0.86rem;
+  opacity: 0.92;
+}
+
+.login-error .ink-button {
+  justify-self: start;
+  margin-top: 4px;
+}
+
+.login-help {
+  margin-top: 18px;
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+}
+
+.login-help summary {
+  font-family: var(--font-display);
+  letter-spacing: 0.6px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.login-help ol {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.login-help code,
+.login-help kbd {
+  padding: 1px 5px;
+  background: var(--paper-deep);
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+
+.login-risk {
+  padding: 8px 10px;
+  background: var(--paper-deep);
+  border-left: var(--ink-bold) solid var(--ink);
+  border-radius: 4px;
+}

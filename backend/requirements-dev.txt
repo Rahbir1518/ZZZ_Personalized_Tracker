@@ -1,0 +1,6 @@
+-r requirements.txt
+
+pytest==9.1.*
+pytest-asyncio==1.*
+ruff==0.14.*
+pyinstaller==6.22.*

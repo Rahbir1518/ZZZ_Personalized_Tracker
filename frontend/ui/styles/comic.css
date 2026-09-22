@@ -1,0 +1,294 @@
+/**
+ * The comic-book design system: tokens + the shared "printed page" primitives
+ * every screen builds on. Component-specific rules live next to their
+ * components; anything cross-cutting (ink, halftone, bursts, panels) belongs
+ * here so the look stays consistent.
+ *
+ * Everything is pure CSS/SVG — no image assets, nothing to commit.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;700;900&display=swap');
+
+:root {
+  /* --- ink & paper ---------------------------------------------------- */
+  --ink: #12100e;
+  --ink-soft: #4a443c;
+  --paper: #f4efe1;
+  --paper-deep: #e6dcc4;
+  --panel: #fffdf6;
+
+  /* --- accents (element-agnostic; agent element tints layer on top) ---- */
+  --pow: #ffd23f;
+  --pow-deep: #f5a201;
+  --zap: #35a7ff;
+  --danger: #ef486b;
+  --good: #3ec46d;
+  --warn: #ff8c42;
+
+  /* --- ink outline weights -------------------------------------------- */
+  --ink-hair: 2px;
+  --ink-bold: 3px;
+  --ink-heavy: 5px;
+
+  /* --- the hard offset shadow that makes things feel printed ---------- */
+  --shadow-pop: 6px 6px 0 var(--ink);
+  --shadow-pop-sm: 3px 3px 0 var(--ink);
+  --shadow-pop-lg: 10px 10px 0 var(--ink);
+
+  /* --- layout ---------------------------------------------------------- */
+  --gutter: 18px;
+  --radius: 10px;
+
+  --font-display: 'Bangers', 'Impact', sans-serif;
+  --font-body: 'Nunito', system-ui, sans-serif;
+}
+
+/* Respect the OS, but this app is deliberately a bright printed page; dark
+   mode dims the paper rather than inverting to a dark UI, which would fight
+   the comic metaphor. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --paper: #d9d2c2;
+    --paper-deep: #c3baa4;
+    --panel: #ece5d5;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--ink);
+  background-color: var(--paper);
+  background-image: var(--halftone-bg);
+  background-size: 14px 14px;
+  overflow: hidden; /* the app manages its own scroll regions */
+}
+
+/* --------------------------------------------------------------------- */
+/* Ben-Day halftone                                                       */
+/* --------------------------------------------------------------------- */
+
+:root {
+  /* A repeating radial-gradient is cheaper and sharper than an SVG filter,
+     and scales with background-size. */
+  --halftone-bg: radial-gradient(circle at 1px 1px, rgba(18, 16, 14, 0.09) 1px, transparent 0);
+}
+
+.halftone {
+  background-image: var(--halftone-bg);
+  background-size: 10px 10px;
+}
+
+.halftone-dense {
+  background-image: radial-gradient(circle at 1px 1px, rgba(18, 16, 14, 0.22) 1.4px, transparent 0);
+  background-size: 6px 6px;
+}
+
+/* --------------------------------------------------------------------- */
+/* Panels — the basic printed frame                                       */
+/* --------------------------------------------------------------------- */
+
+.panel {
+  background: var(--panel);
+  border: var(--ink-bold) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+  padding: 16px;
+}
+
+.panel-tilt-l {
+  transform: rotate(-0.6deg);
+}
+.panel-tilt-r {
+  transform: rotate(0.5deg);
+}
+
+/* --------------------------------------------------------------------- */
+/* Type                                                                   */
+/* --------------------------------------------------------------------- */
+
+.display {
+  font-family: var(--font-display);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  line-height: 1.05;
+}
+
+/* The classic stacked-ink headline. text-stroke keeps it one element. */
+.display-outline {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  color: var(--pow);
+  -webkit-text-stroke: 2px var(--ink);
+  paint-order: stroke fill;
+  text-shadow: var(--shadow-pop-sm);
+  letter-spacing: 1.5px;
+}
+
+/* --------------------------------------------------------------------- */
+/* Buttons                                                                */
+/* --------------------------------------------------------------------- */
+
+.ink-button {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--pow);
+  border: var(--ink-bold) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop-sm);
+  padding: 8px 18px;
+  cursor: pointer;
+  transition:
+    transform 80ms ease,
+    box-shadow 80ms ease;
+}
+
+.ink-button:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+
+/* Pressing pushes the button into the page and the shadow collapses. */
+.ink-button:active:not(:disabled) {
+  transform: translate(3px, 3px);
+  box-shadow: 0 0 0 var(--ink);
+}
+
+.ink-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ink-button-quiet {
+  background: var(--panel);
+}
+
+.ink-button:focus-visible {
+  outline: var(--ink-bold) solid var(--zap);
+  outline-offset: 3px;
+}
+
+/* --------------------------------------------------------------------- */
+/* Speech bubbles                                                         */
+/* --------------------------------------------------------------------- */
+
+.bubble {
+  position: relative;
+  background: var(--panel);
+  border: var(--ink-bold) solid var(--ink);
+  border-radius: 20px;
+  box-shadow: var(--shadow-pop-sm);
+  padding: 12px 16px;
+}
+
+/* The tail is two stacked triangles: the ink outline, then the fill on top. */
+.bubble::after,
+.bubble::before {
+  content: '';
+  position: absolute;
+  bottom: -18px;
+  left: 28px;
+  border: 10px solid transparent;
+}
+
+.bubble::before {
+  border-top-color: var(--ink);
+  bottom: -21px;
+}
+
+.bubble::after {
+  border-top-color: var(--panel);
+}
+
+/* --------------------------------------------------------------------- */
+/* Burst / "POW" badges                                                   */
+/* --------------------------------------------------------------------- */
+
+.burst {
+  display: inline-grid;
+  place-items: center;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--ink);
+  background: var(--pow);
+  border: var(--ink-bold) solid var(--ink);
+  padding: 10px 18px;
+  /* A 12-point star, drawn with clip-path so it needs no asset. */
+  clip-path: polygon(
+    50% 0%,
+    61% 12%,
+    76% 6%,
+    79% 22%,
+    94% 22%,
+    90% 38%,
+    100% 50%,
+    90% 62%,
+    94% 78%,
+    79% 78%,
+    76% 94%,
+    61% 88%,
+    50% 100%,
+    39% 88%,
+    24% 94%,
+    21% 78%,
+    6% 78%,
+    10% 62%,
+    0% 50%,
+    10% 38%,
+    6% 22%,
+    21% 22%,
+    24% 6%,
+    39% 12%
+  );
+}
+
+.burst-good {
+  background: var(--good);
+}
+.burst-warn {
+  background: var(--warn);
+}
+.burst-bad {
+  background: var(--danger);
+}
+
+/* --------------------------------------------------------------------- */
+/* Scrollbars — keep them inside the aesthetic                            */
+/* --------------------------------------------------------------------- */
+
+::-webkit-scrollbar {
+  width: 14px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--paper-deep);
+  border-left: var(--ink-hair) solid var(--ink);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ink);
+  border: 3px solid var(--paper-deep);
+  border-radius: 8px;
+}
+
+/* --------------------------------------------------------------------- */
+/* Motion                                                                 */
+/* --------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

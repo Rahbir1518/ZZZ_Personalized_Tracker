@@ -1,0 +1,145 @@
+.teams {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 14px;
+  height: 100%;
+  min-height: 0;
+}
+
+.teams-subtabs {
+  display: flex;
+  gap: 8px;
+}
+
+.teams-subtabs .ink-button {
+  font-size: 0.95rem;
+}
+
+.teams-subtabs .is-active {
+  background: var(--pow);
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+.teams-body {
+  overflow-y: auto;
+  min-height: 0;
+  padding: 4px 10px 24px 4px;
+}
+
+.teams-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--gutter);
+  align-items: start;
+}
+
+/* --- team card -------------------------------------------------------- */
+
+.team-card {
+  display: grid;
+  gap: 10px;
+}
+
+.team-card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.team-card-title {
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.2;
+  flex: 1;
+}
+
+.team-chip {
+  flex: 0 0 auto;
+  padding: 3px 10px;
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  letter-spacing: 0.6px;
+  border: var(--ink-hair) solid var(--ink);
+  border-radius: 999px;
+}
+
+.team-chip-ready {
+  background: var(--good);
+}
+
+.team-chip-missing {
+  background: var(--warn);
+}
+
+.team-card-note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.team-card-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.team-member {
+  padding: 3px 9px;
+  font-size: 0.82rem;
+  border: var(--ink-hair) solid var(--ink);
+  border-radius: 6px;
+}
+
+.team-member-owned {
+  background: var(--panel);
+}
+
+/* Missing members read as "not yours yet" — dashed, washed out. */
+.team-member-missing {
+  background: var(--paper-deep);
+  border-style: dashed;
+  color: var(--ink-soft);
+}
+
+.team-card-readiness {
+  display: grid;
+  gap: 4px;
+}
+
+.team-card-label {
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+/* --- farming panel ---------------------------------------------------- */
+
+.teams-suggested {
+  display: grid;
+  gap: var(--gutter);
+}
+
+.teams-farming {
+  background: var(--pow);
+}
+
+.teams-farming-title {
+  margin: 0 0 8px;
+  font-size: 1.3rem;
+  letter-spacing: 1px;
+}
+
+.teams-farming-list {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+}
+
+.teams-farming-reason {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
