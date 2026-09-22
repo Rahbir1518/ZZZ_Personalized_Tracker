@@ -31,7 +31,8 @@
   color: var(--paper);
   background: var(--ink-300);
   border: var(--hair) solid var(--ink-400);
-  cursor: var(--cursor-clickable);
+  cursor: none;
+  --cursor-role: clickable;
 }
 
 .ov-close:hover {

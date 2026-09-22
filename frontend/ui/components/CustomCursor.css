@@ -1,0 +1,20 @@
+/**
+ * The blend is the whole feature: a plain white glyph, composited so it reads
+ * against anything underneath it rather than matching a colour chosen ahead
+ * of time. See CustomCursor.tsx for why this can't be a native cursor image.
+ */
+.custom-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  /* Higher than everything else that stacks in this app (the highest today
+     is the synergy panel at 70) so it is never painted under a modal. */
+  z-index: 999999;
+  /* No width/height: each PNG is already sized for cursor use (see
+     scripts/build-cursors.md) — 26px default, 32px clickable — and forcing a
+     shared box would either stretch the smaller one or crop the larger. */
+  pointer-events: none;
+  user-select: none;
+  mix-blend-mode: difference;
+  will-change: transform;
+}

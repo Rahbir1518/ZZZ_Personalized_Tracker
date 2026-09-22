@@ -117,7 +117,8 @@
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--paper-dim);
-  cursor: var(--cursor-clickable);
+  cursor: none;
+  --cursor-role: clickable;
 }
 
 .login-help summary:hover {

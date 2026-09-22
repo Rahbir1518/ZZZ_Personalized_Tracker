@@ -61,21 +61,22 @@
   --font-display: 'Barlow Condensed', 'Oswald', Impact, sans-serif;
   --font-tech: 'Barlow Semi Condensed', ui-sans-serif, system-ui, sans-serif;
 
-  /* --- cursor ------------------------------------------------------------
-   * A custom cursor rather than the OS default, because the app already
-   * commits to its own type, icon and rank-badge art in place of native
-   * chrome — the pointer was the one remaining piece of system furniture.
-   * Both are the same solid white arrow (dark hairline so it still reads
-   * over a light surface, e.g. a native file dialog). The clickable variant
-   * adds a small gold ring at its shoulder rather than changing colour or
-   * shape outright — a ring reads at cursor size where a tint would not, and
-   * it reuses the small-ring-as-interactive-marker language the empty state
-   * already uses (see .empty-mark in Ui.css) instead of inventing a second
-   * one. The hotspot (the tip) sits at the same point in both images, so
-   * hovering onto a clickable element never nudges what's under the cursor.
+  /* --- cursor role --------------------------------------------------------
+   * Not a `cursor` value — the real cursor is switched off below and drawn
+   * by <CustomCursor>, a fixed element blended with `mix-blend-mode:
+   * difference` so it renders solid white over a dark surface and solid
+   * black over a light one, live, rather than a fixed colour that only reads
+   * on the background it was designed against. A plain image `cursor: url()`
+   * cannot do that; it is a static bitmap. See CustomCursor.tsx.
+   *
+   * `--cursor-role` is how that component knows which of the two supplied
+   * glyphs to show at the pointer's position: it reads this custom property
+   * off whatever element is actually under the pointer. Being a custom
+   * property rather than `cursor` itself, it survives `cursor: none` below,
+   * so this is the one thing that has to be set wherever an element used to
+   * read `cursor: var(--cursor-clickable)`.
    */
-  --cursor-default: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij4KPHBhdGggZD0iTTQgMyBMNCAxOCBMOCAxNCBMMTEgMjEgTDEzLjUgMTkuOCBMMTAuNSAxMy44IEwxNiAxMy44IFoiIGZpbGw9IiNmZmZmZmYiIHN0cm9rZT0iIzFhMWExYSIgc3Ryb2tlLXdpZHRoPSIxLjI1IiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPC9zdmc+') 4 3, auto;
-  --cursor-clickable: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyOCIgaGVpZ2h0PSIyOCIgdmlld0JveD0iMCAwIDI4IDI4Ij4KPHBhdGggZD0iTTQgMyBMNCAxOCBMOCAxNCBMMTEgMjEgTDEzLjUgMTkuOCBMMTAuNSAxMy44IEwxNiAxMy44IFoiIGZpbGw9IiNmZmZmZmYiIHN0cm9rZT0iIzFhMWExYSIgc3Ryb2tlLXdpZHRoPSIxLjI1IiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPGNpcmNsZSBjeD0iMjAiIGN5PSI2LjUiIHI9IjMuMSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZjJjMjMwIiBzdHJva2Utd2lkdGg9IjEuNiIvPgo8L3N2Zz4=') 4 3, pointer;
+  --cursor-role: default;
 }
 
 * {
@@ -94,7 +95,25 @@ body {
   background-color: var(--ink-000);
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
-  cursor: var(--cursor-default);
+  /* The native cursor is fully replaced by <CustomCursor>; see the token
+     comment above. Text fields and disabled controls opt back into a native
+     cursor further down, because a blended arrow is the wrong tool for an
+     I-beam or a "can't click this" slash. */
+  cursor: none;
+}
+
+input,
+textarea,
+[contenteditable='true'] {
+  cursor: text;
+  --cursor-role: text;
+}
+
+/* Still a click target, not text entry. */
+input[type='checkbox'],
+input[type='radio'] {
+  cursor: none;
+  --cursor-role: clickable;
 }
 
 /* --------------------------------------------------------------------- */
@@ -302,7 +321,8 @@ body {
   border: var(--hair) solid var(--ink-400);
   clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
   padding: 8px 18px;
-  cursor: var(--cursor-clickable);
+  cursor: none;
+  --cursor-role: clickable;
   transition:
     background 120ms ease,
     color 120ms ease,
@@ -318,6 +338,7 @@ body {
 .btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+  --cursor-role: disabled;
 }
 
 .btn:focus-visible {
@@ -400,7 +421,8 @@ body {
   -webkit-appearance: none;
   width: 11px;
   height: 11px;
-  cursor: var(--cursor-clickable);
+  cursor: none;
+  --cursor-role: clickable;
   background: var(--muted);
   /* A cross, drawn as a mask so it takes the token colour. */
   mask: linear-gradient(45deg, transparent 43%, #000 43% 57%, transparent 57%),

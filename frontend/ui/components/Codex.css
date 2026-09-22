@@ -21,7 +21,8 @@
   color: var(--paper);
   background: var(--ink-300);
   border: var(--hair) solid var(--ink-400);
-  cursor: var(--cursor-clickable);
+  cursor: none;
+  --cursor-role: clickable;
   clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
   transition:
     background 120ms ease,
@@ -195,7 +196,8 @@
   color: var(--paper-dim);
   background: var(--ink-200);
   border: var(--hair) solid var(--ink-400);
-  cursor: var(--cursor-clickable);
+  cursor: none;
+  --cursor-role: clickable;
   transition:
     background 120ms ease,
     color 120ms ease;
@@ -354,7 +356,8 @@
   background: none;
   border: 0;
   border-radius: 0;
-  cursor: var(--cursor-clickable);
+  cursor: none;
+  --cursor-role: clickable;
 }
 
 .is-link:hover {
