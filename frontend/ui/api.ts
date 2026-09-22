@@ -10,9 +10,12 @@
 import type {
   Agent,
   AgentDetail,
+  AgentSynergy,
   Analysis,
   ApiErrorCode,
   AuthResult,
+  DiscSetDetail,
+  EngineDetail,
   SyncStatus
 } from './types'
 
@@ -94,6 +97,16 @@ export const api = {
   agentDetail: (id: number): Promise<AgentDetail> => request(`/agents/${id}`),
 
   analysis: (): Promise<Analysis> => request('/analysis'),
+
+  engine: (name: string): Promise<EngineDetail> =>
+    request(`/engines?name=${encodeURIComponent(name)}`),
+
+  discSet: (name: string): Promise<DiscSetDetail> =>
+    request(`/disc-sets?name=${encodeURIComponent(name)}`),
+
+  /** One entry per name, in the order given, so a team reads left to right. */
+  synergy: (names: string[]): Promise<AgentSynergy[]> =>
+    request(`/synergy?${names.map((n) => `names=${encodeURIComponent(n)}`).join('&')}`),
 
   startSync: (force = false): Promise<SyncStatus> =>
     request(`/sync?force=${force ? 'true' : 'false'}`, { method: 'POST' }),

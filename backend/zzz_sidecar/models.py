@@ -169,6 +169,100 @@ class AgentGuide(BaseModel):
 
 
 # --------------------------------------------------------------------------- #
+# Codex — game data for the drill-down pages (W-Engines, disc sets, synergy)
+# --------------------------------------------------------------------------- #
+
+
+class CodexMention(BaseModel):
+    """One agent's relationship to a codex entry.
+
+    Used both ways round: "these agents are recommended to use it" and "these
+    agents of yours currently wear it".
+    """
+
+    agent_name: str
+    #: Whichever art the calling screen already had for this agent.
+    icon: str = ""
+    owned: bool = False
+    #: Rank / rating carry Prydwen's ordering when the mention comes from a
+    #: guide; both are 0 for an equipped-by mention.
+    rank: int = 0
+    rating: float = 0.0
+    #: 2 or 4 for a disc set mention, 0 otherwise.
+    pieces: int = 0
+    #: Free text: the guide's note, or the equipped level/refinement.
+    detail: str = ""
+
+
+class EngineEffect(BaseModel):
+    """One refinement step of a W-Engine's passive."""
+
+    #: Superimpose / refinement rank, 1-5.
+    refinement: int
+    description: str = ""
+
+
+class EngineDetail(BaseModel):
+    """A W-Engine's own page.
+
+    ``known`` is False when the game-data lookup missed or the machine is
+    offline: the usage lists below are computed locally and are still worth
+    showing, so a miss degrades the page rather than emptying it.
+    """
+
+    name: str
+    known: bool = False
+    rarity: str = ""
+    #: The specialty the engine is built for, e.g. "Attack".
+    specialty: str = ""
+    #: Base ATK at max level and full modification.
+    base_atk: int = 0
+    #: The secondary stat, already formatted, at max level.
+    adv_stat: Property | None = None
+    flavour: str = ""
+    effect_name: str = ""
+    effects: list[EngineEffect] = Field(default_factory=list)
+    #: Your agents currently wearing it.
+    equipped_by: list[CodexMention] = Field(default_factory=list)
+    #: Agents whose guide recommends it, best rank first.
+    recommended_for: list[CodexMention] = Field(default_factory=list)
+
+
+class DiscSetDetail(BaseModel):
+    """A Drive Disc set's own page."""
+
+    set_name: str
+    known: bool = False
+    two_piece: str = ""
+    four_piece: str = ""
+    #: Your agents wearing pieces of it; ``pieces`` is how many.
+    equipped_by: list[CodexMention] = Field(default_factory=list)
+    recommended_for: list[CodexMention] = Field(default_factory=list)
+
+
+class AgentSynergy(BaseModel):
+    """Why one agent pulls its weight in a team.
+
+    The Additional Ability is the game's own team-synergy mechanic — it states
+    the squad condition that switches it on and the buff it then grants — so it
+    is the honest answer to "why do these three go together", rather than
+    something we infer from elements and roles.
+    """
+
+    agent_name: str
+    icon: str = ""
+    owned: bool = False
+    element: str = ""
+    specialty: str = ""
+    faction: str = ""
+    known: bool = False
+    core_name: str = ""
+    core_passive: str = ""
+    additional_name: str = ""
+    additional_ability: str = ""
+
+
+# --------------------------------------------------------------------------- #
 # Analysis — the actual point of the app
 # --------------------------------------------------------------------------- #
 

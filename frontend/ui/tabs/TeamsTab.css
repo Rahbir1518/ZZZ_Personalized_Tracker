@@ -82,8 +82,8 @@
 
 .team-card-head {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
 }
 
 .team-card-title {
@@ -205,11 +205,90 @@
   --cut: 14px;
 }
 
-.teams-farming-title {
+/* Collapsed, the panel is just its own header. */
+.teams-farming.is-collapsed {
+  padding-bottom: 0;
+}
+
+.teams-farming-head {
   margin: 0 0 10px;
+}
+
+.teams-farming.is-collapsed .teams-farming-head {
+  margin-bottom: 0;
+}
+
+/**
+ * The whole header is the toggle, not just the chevron: a 26px target at the
+ * far end of a full-width heading is needlessly fiddly when the row beside it
+ * is dead space anyway.
+ */
+.teams-farming-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.teams-farming-toggle:focus-visible {
+  outline: var(--edge) solid var(--gold);
+  outline-offset: 3px;
+}
+
+.teams-farming-title {
+  font-family: var(--font-display);
+  font-weight: 800;
   font-size: 1.2rem;
   letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--gold);
+}
+
+/* What you are folding away, so the collapsed panel still says something. */
+.teams-farming-count {
+  color: var(--muted);
+}
+
+/**
+ * The same › the navigation rail uses, turned a quarter turn. Reusing a
+ * glyph the app already ships avoids a caret that renders as a box wherever
+ * the font happens not to carry one.
+ */
+.teams-farming-chevron {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-left: auto;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--muted);
+  background: var(--ink-200);
+  border: var(--hair) solid var(--ink-400);
+  /* Collapsed: points down, "there is more below". */
+  transform: rotate(90deg);
+  transition:
+    transform 160ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+.teams-farming-toggle:hover .teams-farming-chevron {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
+/* Open: points up, "fold this away". */
+.teams-farming-toggle[aria-expanded='true'] .teams-farming-chevron {
+  transform: rotate(-90deg);
 }
 
 /* --- farm rows ---------------------------------------------------------- */

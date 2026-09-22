@@ -8,12 +8,17 @@
  *
  * Each member's detail is fetched from /agents/{id}, the same endpoint the
  * character overlay uses, so the two can never disagree.
+ *
+ * Gear drills through the same way it does in the character overlay: clicking a
+ * W-Engine or a disc set pushes its page onto this overlay's own stack, and the
+ * back arrow returns to the team.
  */
 
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { api } from '../api'
-import type { Agent, AgentDetail, TeamMember, TeamStatus } from '../types'
+import type { Agent, AgentDetail, TeamMember, TeamStatus, WEngine } from '../types'
+import { BackBar, CodexPage, useCodexStack, type CodexTarget } from './Codex'
 import { Chip, ItemIcon, Meter, Portrait, Tech } from './Ui'
 import './TeamModal.css'
 
@@ -43,6 +48,7 @@ export function TeamModal({ team, agents, origin, onClose }: Props): React.JSX.E
   const reduced = useReducedMotion() ?? false
   const [expanded, setExpanded] = useState(reduced)
   const [details, setDetails] = useState<Record<string, AgentDetail | null>>({})
+  const codex = useCodexStack()
 
   const members: TeamMember[] =
     team.team.members.length > 0
@@ -76,11 +82,15 @@ export function TeamModal({ team, agents, origin, onClose }: Props): React.JSX.E
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') onClose()
+      if (event.key !== 'Escape') return
+      // One level at a time, same as the back arrow.
+      if (codex.depth > 0) codex.back()
+      else onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+    // The stack object is rebuilt each render; its two used members are not.
+  }, [onClose, codex.depth, codex.back])
 
   const from = {
     top: origin.top,
@@ -122,6 +132,10 @@ export function TeamModal({ team, agents, origin, onClose }: Props): React.JSX.E
         }
         onAnimationComplete={() => setExpanded(true)}
       >
+        {codex.top !== null && (
+          <BackBar label={team.team.agent_names.join(' · ')} onBack={codex.back} />
+        )}
+
         <button type="button" className="ov-close" onClick={onClose} aria-label="Close">
           ✕
         </button>
@@ -134,43 +148,50 @@ export function TeamModal({ team, agents, origin, onClose }: Props): React.JSX.E
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <header className="tm-head">
-                <div>
-                  <h2 className="display tm-title">{team.team.agent_names.join('  ·  ')}</h2>
-                  {team.team.note !== '' && <Tech>{team.team.note}</Tech>}
-                </div>
-
-                <div className="tm-status">
-                  {team.fieldable ? (
-                    <Chip tone="good">Ready</Chip>
-                  ) : (
-                    <Chip tone="gold">{team.missing_members.length} missing</Chip>
-                  )}
-                  {team.fieldable && (
-                    <div className="tm-readiness">
-                      <Tech>Build readiness</Tech>
-                      <Meter
-                        value={team.readiness}
-                        tone={
-                          team.readiness > 0.8 ? 'good' : team.readiness > 0.5 ? 'gold' : 'warn'
-                        }
-                      />
+              {codex.top !== null ? (
+                <CodexPage target={codex.top} />
+              ) : (
+                <>
+                  <header className="tm-head">
+                    <div>
+                      <h2 className="display tm-title">{team.team.agent_names.join('  ·  ')}</h2>
+                      {team.team.note !== '' && <Tech>{team.team.note}</Tech>}
                     </div>
-                  )}
-                </div>
-              </header>
 
-              <div className="tm-members" style={{ '--slots': members.length } as React.CSSProperties}>
-                {members.map((member, slot) => (
-                  <MemberColumn
-                    key={`${member.name}-${slot}`}
-                    member={member}
-                    owned={team.owned_members.includes(member.name)}
-                    detail={details[member.name] ?? null}
-                    loaded={member.name in details}
-                  />
-                ))}
-              </div>
+                    <div className="tm-status">
+                      {team.fieldable ? (
+                        <Chip tone="good">Ready</Chip>
+                      ) : (
+                        <Chip tone="gold">{team.missing_members.length} missing</Chip>
+                      )}
+                      {team.fieldable && (
+                        <div className="tm-readiness">
+                          <Tech>Build readiness</Tech>
+                          <Meter
+                            value={team.readiness}
+                            tone={
+                              team.readiness > 0.8 ? 'good' : team.readiness > 0.5 ? 'gold' : 'warn'
+                            }
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </header>
+
+                  <div className="tm-members" style={{ '--slots': members.length } as React.CSSProperties}>
+                    {members.map((member, slot) => (
+                      <MemberColumn
+                        key={`${member.name}-${slot}`}
+                        member={member}
+                        owned={team.owned_members.includes(member.name)}
+                        detail={details[member.name] ?? null}
+                        loaded={member.name in details}
+                        onOpen={codex.open}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -183,12 +204,14 @@ function MemberColumn({
   member,
   owned,
   detail,
-  loaded
+  loaded,
+  onOpen
 }: {
   member: TeamMember
   owned: boolean
   detail: AgentDetail | null
   loaded: boolean
+  onOpen: (target: CodexTarget) => void
 }): React.JSX.Element {
   const build = detail?.build ?? null
   const guide = detail?.guide ?? null
@@ -232,34 +255,34 @@ function MemberColumn({
             {owned && (
               <>
                 <h4 className="tm-sub-head">Equipped</h4>
-                {build?.w_engine != null ? (
-                  <div className="tm-row">
-                    <ItemIcon src={build.w_engine.icon} rarity={build.w_engine.rarity} size={40} />
-                    <div className="tm-row-text">
-                      <strong>{build.w_engine.name}</strong>
-                      <Tech>
-                        Lv {build.w_engine.level} · S{build.w_engine.refinement}
-                      </Tech>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="tm-empty">No W-Engine equipped.</p>
-                )}
+                <EquippedEngine engine={build?.w_engine ?? null} onOpen={onOpen} />
 
                 {build !== null && build.discs.length > 0 ? (
                   <ul className="tm-list">
                     {build.discs.map((disc) => (
-                      <li key={disc.id} className="tm-row">
-                        <span className="tm-slot">{disc.position}</span>
-                        <ItemIcon src={disc.icon} rarity={disc.rarity} size={34} />
-                        <div className="tm-row-text">
-                          <strong>{disc.set_name || disc.name}</strong>
-                          {disc.main_stat !== null && (
-                            <Tech>
-                              {disc.main_stat.name} {disc.main_stat.value}
-                            </Tech>
-                          )}
-                        </div>
+                      <li key={disc.id}>
+                        <button
+                          type="button"
+                          className="tm-row is-link"
+                          onClick={() =>
+                            onOpen({
+                              kind: 'set',
+                              name: disc.set_name || disc.name,
+                              icon: disc.icon
+                            })
+                          }
+                        >
+                          <span className="tm-slot">{disc.position}</span>
+                          <ItemIcon src={disc.icon} rarity={disc.rarity} size={34} />
+                          <div className="tm-row-text">
+                            <strong>{disc.set_name || disc.name}</strong>
+                            {disc.main_stat !== null && (
+                              <Tech>
+                                {disc.main_stat.name} {disc.main_stat.value}
+                              </Tech>
+                            )}
+                          </div>
+                        </button>
                       </li>
                     ))}
                   </ul>
@@ -276,15 +299,28 @@ function MemberColumn({
             ) : (
               <ol className="tm-list">
                 {guide.engines.slice(0, 3).map((engine) => (
-                  <li key={engine.name} className="tm-row">
-                    <span className="tm-rank">{engine.rank}</span>
-                    <ItemIcon src={engine.icon} size={34} rarity={engine.rarity} />
-                    <div className="tm-row-text">
-                      <strong>{engine.name}</strong>
-                      {engine.recommended_superimpose > 0 && (
-                        <Tech>S{engine.recommended_superimpose}</Tech>
-                      )}
-                    </div>
+                  <li key={engine.name}>
+                    <button
+                      type="button"
+                      className="tm-row is-link"
+                      onClick={() =>
+                        onOpen({
+                          kind: 'engine',
+                          name: engine.name,
+                          icon: engine.icon,
+                          rarity: engine.rarity
+                        })
+                      }
+                    >
+                      <span className="tm-rank">{engine.rank}</span>
+                      <ItemIcon src={engine.icon} size={34} rarity={engine.rarity} />
+                      <div className="tm-row-text">
+                        <strong>{engine.name}</strong>
+                        {engine.recommended_superimpose > 0 && (
+                          <Tech>S{engine.recommended_superimpose}</Tech>
+                        )}
+                      </div>
+                    </button>
                   </li>
                 ))}
               </ol>
@@ -295,14 +331,20 @@ function MemberColumn({
                 <h4 className="tm-sub-head">Disc sets</h4>
                 <ul className="tm-list">
                   {guide.disc_sets.slice(0, 4).map((set) => (
-                    <li key={`${set.set_name}-${set.pieces}`} className="tm-row">
-                      <span className={`tm-pc ${set.pieces === 4 ? 'is-four' : ''}`}>
-                        {set.pieces}PC
-                      </span>
-                      <ItemIcon src={set.icon} size={34} />
-                      <div className="tm-row-text">
-                        <strong>{set.set_name}</strong>
-                      </div>
+                    <li key={`${set.set_name}-${set.pieces}`}>
+                      <button
+                        type="button"
+                        className="tm-row is-link"
+                        onClick={() => onOpen({ kind: 'set', name: set.set_name, icon: set.icon })}
+                      >
+                        <span className={`tm-pc ${set.pieces === 4 ? 'is-four' : ''}`}>
+                          {set.pieces}PC
+                        </span>
+                        <ItemIcon src={set.icon} size={34} />
+                        <div className="tm-row-text">
+                          <strong>{set.set_name}</strong>
+                        </div>
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -333,5 +375,34 @@ function MemberColumn({
         )}
       </div>
     </section>
+  )
+}
+
+/** Split out so the null check narrows inside the click handler too. */
+function EquippedEngine({
+  engine,
+  onOpen
+}: {
+  engine: WEngine | null
+  onOpen: (target: CodexTarget) => void
+}): React.JSX.Element {
+  if (engine === null) return <p className="tm-empty">No W-Engine equipped.</p>
+
+  return (
+    <button
+      type="button"
+      className="tm-row is-link"
+      onClick={() =>
+        onOpen({ kind: 'engine', name: engine.name, icon: engine.icon, rarity: engine.rarity })
+      }
+    >
+      <ItemIcon src={engine.icon} rarity={engine.rarity} size={40} />
+      <div className="tm-row-text">
+        <strong>{engine.name}</strong>
+        <Tech>
+          Lv {engine.level} · S{engine.refinement}
+        </Tech>
+      </div>
+    </button>
   )
 }

@@ -1,15 +1,20 @@
 /**
  * Teams tab, with two sub-tabs:
  *
- *  - My Teams   — recommended comps every member of which you own.
  *  - Suggested  — comps you are missing pieces of, nearest-first, plus the
  *                 farming priorities derived from the same join.
+ *  - My Teams   — recommended comps every member of which you own.
+ *
+ * Suggested leads and opens by default: it is the one that tells you what to
+ * do next. My Teams is a record of what you have already finished, and for a
+ * roster with no complete comps yet it is empty.
  */
 
 import { useMemo, useRef, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { Chip, EmptyState, ItemIcon, Meter, Panel, Tech } from '../components/Ui'
 import { TeamModal } from '../components/TeamModal'
+import { TeamSynergy } from '../components/TeamSynergy'
 import { AgentSearch, type Suggestion } from '../components/AgentSearch'
 import type { Agent, Analysis, FarmingPriority, TeamMember, TeamStatus } from '../types'
 import './TeamsTab.css'
@@ -30,7 +35,10 @@ function matchesQuery(team: TeamStatus, needle: string): boolean {
 }
 
 export function TeamsTab({ analysis, agents, loading }: Props): React.JSX.Element {
-  const [sub, setSub] = useState<SubTab>('mine')
+  const [sub, setSub] = useState<SubTab>('suggested')
+  // The farming list is long and sits above the suggested teams, so it is
+  // worth being able to fold it away and get straight to the comps.
+  const [farmOpen, setFarmOpen] = useState(true)
   const [query, setQuery] = useState('')
   const [opened, setOpened] = useState<{ team: TeamStatus; origin: DOMRect } | null>(null)
 
@@ -148,20 +156,20 @@ export function TeamsTab({ analysis, agents, loading }: Props): React.JSX.Elemen
         <button
           type="button"
           role="tab"
-          aria-selected={sub === 'mine'}
-          className={`btn ${sub === 'mine' ? 'btn-active' : ''}`}
-          onClick={() => setSub('mine')}
-        >
-          My Teams ({allMine.length})
-        </button>
-        <button
-          type="button"
-          role="tab"
           aria-selected={sub === 'suggested'}
           className={`btn ${sub === 'suggested' ? 'btn-active' : ''}`}
           onClick={() => setSub('suggested')}
         >
           Suggested ({allSuggested.length})
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={sub === 'mine'}
+          className={`btn ${sub === 'mine' ? 'btn-active' : ''}`}
+          onClick={() => setSub('mine')}
+        >
+          My Teams ({allMine.length})
         </button>
 
         <AgentSearch
@@ -208,13 +216,37 @@ export function TeamsTab({ analysis, agents, loading }: Props): React.JSX.Elemen
         ) : (
           <div className="teams-suggested">
             {farming.length > 0 && (
-              <Panel className="teams-farming" tick>
-                <h3 className="display teams-farming-title">Farm next</h3>
-                <ol className="farm-list">
-                  {farming.map((priority) => (
-                    <FarmRow key={priority.label} priority={priority} />
-                  ))}
-                </ol>
+              <Panel className={`teams-farming ${farmOpen ? '' : 'is-collapsed'}`} tick>
+                {/* Heading wrapping a button: the accordion pattern, so the
+                    section keeps its place in the document outline while the
+                    whole header stays clickable. */}
+                <h3 className="teams-farming-head">
+                  <button
+                    type="button"
+                    className="teams-farming-toggle"
+                    onClick={() => setFarmOpen((open) => !open)}
+                    aria-expanded={farmOpen}
+                    aria-controls="farm-list"
+                  >
+                    <span className="display teams-farming-title">Farm next</span>
+                    {!farmOpen && (
+                      <Tech className="teams-farming-count">
+                        {farming.length} target{farming.length === 1 ? '' : 's'}
+                      </Tech>
+                    )}
+                    <span className="teams-farming-chevron" aria-hidden="true">
+                      ›
+                    </span>
+                  </button>
+                </h3>
+
+                {farmOpen && (
+                  <ol className="farm-list" id="farm-list">
+                    {farming.map((priority) => (
+                      <FarmRow key={priority.label} priority={priority} />
+                    ))}
+                  </ol>
+                )}
               </Panel>
             )}
 
@@ -318,6 +350,7 @@ function TeamCard({
       />
       <header className="team-card-head">
         <h3 className="display team-card-title">{team.team.agent_names.join('  ·  ')}</h3>
+        <TeamSynergy team={team} />
         {team.fieldable ? (
           <Chip tone="good">Ready</Chip>
         ) : (

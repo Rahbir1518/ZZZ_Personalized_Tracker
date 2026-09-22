@@ -5,12 +5,18 @@
  * out to full screen, so it reads as the card enlarging rather than a dialog
  * appearing centre-screen. Content is gated until the expand finishes, and
  * degrades to a plain fade under prefers-reduced-motion.
+ *
+ * Gear drills through in place. Clicking a W-Engine or a disc set pushes its
+ * page onto this overlay's stack (see `useCodexStack`) instead of opening a
+ * second dialog, so there is only ever one scrim and the back arrow has one
+ * meaning: return to the agent you came from.
  */
 
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { api } from '../api'
-import type { Agent, AgentDetail, BuildGap } from '../types'
+import type { Agent, AgentBuild, AgentDetail, BuildGap } from '../types'
+import { BackBar, CodexPage, useCodexStack, type CodexTarget } from './Codex'
 import { Chip, ItemIcon, Meter, RuleTitle, Tech } from './Ui'
 import './AgentModal.css'
 
@@ -27,6 +33,7 @@ export function AgentModal({ agent, origin, onClose }: Props): React.JSX.Element
   const [detail, setDetail] = useState<AgentDetail | null>(null)
   const [expanded, setExpanded] = useState(reduced)
   const [error, setError] = useState('')
+  const codex = useCodexStack()
 
   useEffect(() => {
     let cancelled = false
@@ -45,11 +52,16 @@ export function AgentModal({ agent, origin, onClose }: Props): React.JSX.Element
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') onClose()
+      if (event.key !== 'Escape') return
+      // Escape unwinds the stack one level at a time before it closes the
+      // overlay — the same thing the back arrow does.
+      if (codex.depth > 0) codex.back()
+      else onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+    // The stack object is rebuilt each render; its two used members are not.
+  }, [onClose, codex.depth, codex.back])
 
   const from = {
     top: origin.top,
@@ -91,6 +103,8 @@ export function AgentModal({ agent, origin, onClose }: Props): React.JSX.Element
         }
         onAnimationComplete={() => setExpanded(true)}
       >
+        {codex.top !== null && <BackBar label={agent.name} onBack={codex.back} />}
+
         <button type="button" className="ov-close" onClick={onClose} aria-label="Close">
           ✕
         </button>
@@ -103,12 +117,14 @@ export function AgentModal({ agent, origin, onClose }: Props): React.JSX.Element
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2 }}
             >
-              {error !== '' ? (
+              {codex.top !== null ? (
+                <CodexPage target={codex.top} />
+              ) : error !== '' ? (
                 <p className="ov-error">{error}</p>
               ) : detail === null ? (
                 <p className="ov-loading display">Loading</p>
               ) : (
-                <DetailBody detail={detail} />
+                <DetailBody detail={detail} onOpen={codex.open} />
               )}
             </motion.div>
           )}
@@ -118,7 +134,13 @@ export function AgentModal({ agent, origin, onClose }: Props): React.JSX.Element
   )
 }
 
-function DetailBody({ detail }: { detail: AgentDetail }): React.JSX.Element {
+function DetailBody({
+  detail,
+  onOpen
+}: {
+  detail: AgentDetail
+  onOpen: (target: CodexTarget) => void
+}): React.JSX.Element {
   const { agent, build, guide, gap } = detail
   const portrait = agent.rectangle_icon || agent.square_icon
 
@@ -164,19 +186,7 @@ function DetailBody({ detail }: { detail: AgentDetail }): React.JSX.Element {
           ) : (
             <>
               <h4 className="dt-sub">W-Engine</h4>
-              {build.w_engine === null ? (
-                <p className="dt-empty">Nothing equipped.</p>
-              ) : (
-                <div className="dt-row">
-                  <ItemIcon src={build.w_engine.icon} rarity={build.w_engine.rarity} size={48} />
-                  <div className="dt-row-text">
-                    <strong>{build.w_engine.name}</strong>
-                    <Tech>
-                      Lv {build.w_engine.level} · S{build.w_engine.refinement}
-                    </Tech>
-                  </div>
-                </div>
-              )}
+              <EquippedEngine engine={build.w_engine} onOpen={onOpen} />
 
               <h4 className="dt-sub">Drive Discs</h4>
               {build.discs.length === 0 ? (
@@ -184,20 +194,32 @@ function DetailBody({ detail }: { detail: AgentDetail }): React.JSX.Element {
               ) : (
                 <ul className="dt-discs">
                   {build.discs.map((disc) => (
-                    <li key={disc.id} className="dt-row">
-                      <span className="dt-slot">{disc.position}</span>
-                      <ItemIcon src={disc.icon} rarity={disc.rarity} size={40} />
-                      <div className="dt-row-text">
-                        <strong>{disc.set_name || disc.name}</strong>
-                        {disc.main_stat !== null && (
-                          <Tech>
-                            {disc.main_stat.name} {disc.main_stat.value}
-                          </Tech>
-                        )}
-                        <span className="dt-subs">
-                          {disc.substats.map((s) => `${s.name} ${s.value}`).join(' · ')}
-                        </span>
-                      </div>
+                    <li key={disc.id}>
+                      <button
+                        type="button"
+                        className="dt-row is-link"
+                        onClick={() =>
+                          onOpen({
+                            kind: 'set',
+                            name: disc.set_name || disc.name,
+                            icon: disc.icon
+                          })
+                        }
+                      >
+                        <span className="dt-slot">{disc.position}</span>
+                        <ItemIcon src={disc.icon} rarity={disc.rarity} size={40} />
+                        <div className="dt-row-text">
+                          <strong>{disc.set_name || disc.name}</strong>
+                          {disc.main_stat !== null && (
+                            <Tech>
+                              {disc.main_stat.name} {disc.main_stat.value}
+                            </Tech>
+                          )}
+                          <span className="dt-subs">
+                            {disc.substats.map((s) => `${s.name} ${s.value}`).join(' · ')}
+                          </span>
+                        </div>
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -217,16 +239,30 @@ function DetailBody({ detail }: { detail: AgentDetail }): React.JSX.Element {
               <h4 className="dt-sub">Best W-Engines</h4>
               <ol className="dt-ranked">
                 {guide.engines.slice(0, 5).map((engine) => (
-                  <li key={engine.name} className="dt-row">
-                    <span className="dt-rank">{engine.rank}</span>
-                    <ItemIcon src={engine.icon} size={40} rarity={engine.rarity} />
-                    <div className="dt-row-text">
-                      <strong>{engine.name}</strong>
-                      <Tech>
-                        {engine.recommended_superimpose > 0 && `S${engine.recommended_superimpose}`}
-                        {engine.rating > 0 && ` · ${engine.rating.toFixed(0)}%`}
-                      </Tech>
-                    </div>
+                  <li key={engine.name}>
+                    <button
+                      type="button"
+                      className="dt-row is-link"
+                      onClick={() =>
+                        onOpen({
+                          kind: 'engine',
+                          name: engine.name,
+                          icon: engine.icon,
+                          rarity: engine.rarity
+                        })
+                      }
+                    >
+                      <span className="dt-rank">{engine.rank}</span>
+                      <ItemIcon src={engine.icon} size={40} rarity={engine.rarity} />
+                      <div className="dt-row-text">
+                        <strong>{engine.name}</strong>
+                        <Tech>
+                          {engine.recommended_superimpose > 0 &&
+                            `S${engine.recommended_superimpose}`}
+                          {engine.rating > 0 && ` · ${engine.rating.toFixed(0)}%`}
+                        </Tech>
+                      </div>
+                    </button>
                   </li>
                 ))}
               </ol>
@@ -234,17 +270,25 @@ function DetailBody({ detail }: { detail: AgentDetail }): React.JSX.Element {
               <h4 className="dt-sub">Disc sets</h4>
               <ul className="dt-sets">
                 {guide.disc_sets.map((set) => (
-                  <li key={`${set.set_name}-${set.pieces}`} className="dt-row">
-                    <span className={`dt-pc ${set.pieces === 4 ? 'is-four' : ''}`}>
-                      {set.pieces}PC
-                    </span>
-                    <ItemIcon src={set.icon} size={40} />
-                    <div className="dt-row-text">
-                      <strong>{set.set_name}</strong>
-                      {(set.rating > 0 || set.rank > 0) && (
-                        <Tech>{set.rating > 0 ? `${set.rating.toFixed(0)}%` : `#${set.rank}`}</Tech>
-                      )}
-                    </div>
+                  <li key={`${set.set_name}-${set.pieces}`}>
+                    <button
+                      type="button"
+                      className="dt-row is-link"
+                      onClick={() => onOpen({ kind: 'set', name: set.set_name, icon: set.icon })}
+                    >
+                      <span className={`dt-pc ${set.pieces === 4 ? 'is-four' : ''}`}>
+                        {set.pieces}PC
+                      </span>
+                      <ItemIcon src={set.icon} size={40} />
+                      <div className="dt-row-text">
+                        <strong>{set.set_name}</strong>
+                        {(set.rating > 0 || set.rank > 0) && (
+                          <Tech>
+                            {set.rating > 0 ? `${set.rating.toFixed(0)}%` : `#${set.rank}`}
+                          </Tech>
+                        )}
+                      </div>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -284,6 +328,35 @@ function DetailBody({ detail }: { detail: AgentDetail }): React.JSX.Element {
         </section>
       </div>
     </div>
+  )
+}
+
+/** Split out so the null check narrows for the click handler too. */
+function EquippedEngine({
+  engine,
+  onOpen
+}: {
+  engine: AgentBuild['w_engine']
+  onOpen: (target: CodexTarget) => void
+}): React.JSX.Element {
+  if (engine === null) return <p className="dt-empty">Nothing equipped.</p>
+
+  return (
+    <button
+      type="button"
+      className="dt-row is-link"
+      onClick={() =>
+        onOpen({ kind: 'engine', name: engine.name, icon: engine.icon, rarity: engine.rarity })
+      }
+    >
+      <ItemIcon src={engine.icon} rarity={engine.rarity} size={48} />
+      <div className="dt-row-text">
+        <strong>{engine.name}</strong>
+        <Tech>
+          Lv {engine.level} · S{engine.refinement}
+        </Tech>
+      </div>
+    </button>
   )
 }
 

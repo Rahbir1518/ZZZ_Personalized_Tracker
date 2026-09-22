@@ -123,6 +123,75 @@ export interface AgentGuide {
   source_url: string
 }
 
+/**
+ * One agent's relationship to a codex entry — either "recommended to use it"
+ * or "currently wearing it".
+ */
+export interface CodexMention {
+  agent_name: string
+  icon: string
+  owned: boolean
+  rank: number
+  rating: number
+  /** 2 or 4 on a disc set mention, 0 otherwise. */
+  pieces: number
+  detail: string
+}
+
+export interface EngineEffect {
+  /** Superimpose / refinement rank, 1-5. */
+  refinement: number
+  description: string
+}
+
+/**
+ * A W-Engine's own page. `known` is false when the game-data lookup missed or
+ * the machine is offline — the usage lists are computed locally and still
+ * render, so the page degrades rather than emptying.
+ */
+export interface EngineDetail {
+  name: string
+  known: boolean
+  rarity: string
+  specialty: string
+  /** Base ATK at max level and full modification. */
+  base_atk: number
+  adv_stat: Property | null
+  flavour: string
+  effect_name: string
+  effects: EngineEffect[]
+  equipped_by: CodexMention[]
+  recommended_for: CodexMention[]
+}
+
+export interface DiscSetDetail {
+  set_name: string
+  known: boolean
+  two_piece: string
+  four_piece: string
+  equipped_by: CodexMention[]
+  recommended_for: CodexMention[]
+}
+
+/**
+ * Why one agent pulls its weight in a team. The Additional Ability is the
+ * game's own team-synergy mechanic: it states the squad condition that turns
+ * it on and the buff it then grants.
+ */
+export interface AgentSynergy {
+  agent_name: string
+  icon: string
+  owned: boolean
+  element: string
+  specialty: string
+  faction: string
+  known: boolean
+  core_name: string
+  core_passive: string
+  additional_name: string
+  additional_ability: string
+}
+
 export type GapSeverity = 'COMPLETE' | 'CLOSE' | 'NEEDS_WORK' | 'NOT_BUILT'
 
 export interface BuildGap {

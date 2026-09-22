@@ -176,7 +176,12 @@
   min-width: 0;
 }
 
-.dt-row + .dt-row {
+/* Rows that drill through are wrapped in their own <li>, so the separator has
+   to reach one level up as well as sitting between bare siblings. */
+.dt-row + .dt-row,
+.dt-discs li + li > .dt-row,
+.dt-ranked li + li > .dt-row,
+.dt-sets li + li > .dt-row {
   border-top: var(--hair) solid var(--ink-200);
 }
 

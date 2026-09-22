@@ -109,6 +109,29 @@ class Cache:
             (kind, version, json.dumps(payload), time.time()),
         )
 
+    # -- codex -------------------------------------------------------------- #
+
+    def get_codex(self, kind: str, key: str = "") -> tuple[Any, str, float] | None:
+        """Return (payload, version, fetched_at) for one codex entry.
+
+        The caller decides whether the version still counts as fresh; this
+        layer only stores what it was given.
+        """
+        row = self._read_one(
+            "SELECT payload, version, fetched_at FROM codex WHERE kind = ? AND key = ?",
+            (kind, key),
+        )
+        if row is None:
+            return None
+        return json.loads(row["payload"]), str(row["version"]), float(row["fetched_at"])
+
+    def put_codex(self, kind: str, key: str, version: str, payload: Any) -> None:
+        self._write(
+            "INSERT OR REPLACE INTO codex (kind, key, version, payload, fetched_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (kind, key, version, json.dumps(payload), time.time()),
+        )
+
     # -- account ------------------------------------------------------------ #
 
     def put_roster(self, uid: str, payload: dict[str, Any]) -> None:

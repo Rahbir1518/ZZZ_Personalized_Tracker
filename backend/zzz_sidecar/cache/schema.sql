@@ -63,3 +63,16 @@ CREATE TABLE IF NOT EXISTS sync_run (
 );
 
 CREATE INDEX IF NOT EXISTS idx_sync_run_day ON sync_run (day);
+
+-- Game-data lookups behind the drill-down pages: one W-Engine, the disc set
+-- table, one agent's passives. Keyed by kind + key and stamped with the game
+-- patch they were captured against, so a patch day invalidates them the same
+-- way it invalidates the catalog.
+CREATE TABLE IF NOT EXISTS codex (
+    kind        TEXT NOT NULL,          -- 'engine_index' | 'engine' | 'disc_sets' | 'synergy'
+    key         TEXT NOT NULL DEFAULT '',
+    version     TEXT NOT NULL DEFAULT '',
+    payload     TEXT NOT NULL,
+    fetched_at  REAL NOT NULL,
+    PRIMARY KEY (kind, key)
+);

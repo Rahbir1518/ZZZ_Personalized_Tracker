@@ -1,0 +1,296 @@
+/* --- the ⓘ itself -------------------------------------------------------- */
+
+/**
+ * Sits above the card's full-size hit area, which is why it carries its own
+ * stacking context.
+ */
+.syn-pin {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.9rem;
+  line-height: 1;
+  color: var(--muted);
+  background: var(--ink-200);
+  border: var(--hair) solid var(--ink-400);
+  border-radius: 50%;
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+.syn-pin:hover,
+.syn-pin.is-open {
+  color: var(--ink-000);
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.syn-pin:focus-visible {
+  outline: var(--edge) solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* --- the panel ----------------------------------------------------------- */
+
+/**
+ * Above the agent and team overlays (z-index 60), because a card's ⓘ can be
+ * clicked while one of those is open.
+ */
+.syn-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 3vh 3vw;
+  pointer-events: none;
+}
+
+.syn-layer > * {
+  pointer-events: auto;
+}
+
+.syn-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 3, 4, 0.78);
+  backdrop-filter: blur(3px);
+}
+
+/**
+ * Sized to the team, not to a fixed box: four members need more width than
+ * three, and capping at the viewport keeps it from spilling on a small window.
+ * Rows are the header and then the body, so only the body scrolls and the
+ * heading stays put.
+ */
+.syn-panel {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 14px;
+  width: min(calc(var(--slots, 3) * 340px + 60px), 94vw);
+  max-height: 94vh;
+  padding: 20px 24px 22px;
+  background: var(--ink-100);
+  border: var(--hair) solid var(--ink-400);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
+}
+
+.syn-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding-bottom: 12px;
+  border-bottom: var(--hair) solid var(--ink-300);
+}
+
+.syn-head-text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.syn-title {
+  margin: 0;
+  font-size: 1.6rem;
+  line-height: 1.1;
+  letter-spacing: 0.03em;
+  color: var(--white);
+}
+
+.syn-note {
+  margin: 4px 0 0;
+  padding-left: 9px;
+  border-left: 2px solid var(--gold);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--paper-dim);
+}
+
+.syn-close {
+  width: 30px;
+  height: 30px;
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-size: 0.8rem;
+  color: var(--paper);
+  background: var(--ink-300);
+  border: var(--hair) solid var(--ink-400);
+  cursor: pointer;
+}
+
+.syn-close:hover {
+  color: var(--white);
+  background: var(--alert);
+  border-color: var(--alert);
+}
+
+.syn-body {
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 6px;
+}
+
+.syn-loading,
+.syn-empty {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.syn-loading {
+  padding: 40px 0;
+  font-size: 1.1rem;
+  letter-spacing: 0.2em;
+  text-align: center;
+}
+
+/* --- one agent per column ------------------------------------------------ */
+
+/**
+ * A column each, so the whole team is on screen at once — reading the squad
+ * conditions side by side is the entire point. Below the wrap width they
+ * stack, and the body scrolls.
+ */
+.syn-members {
+  display: grid;
+  grid-template-columns: repeat(var(--slots, 3), minmax(0, 1fr));
+  /* No gap: the columns carry their own gutters, so the rule between two of
+     them sits centred rather than hard against the left one's text. */
+  gap: 0;
+  align-items: start;
+}
+
+/* Own padding on both sides, so every divider has equal air around it. */
+.syn-agent {
+  min-width: 0;
+  padding: 4px 18px 10px;
+}
+
+.syn-agent:first-child {
+  padding-left: 0;
+}
+
+.syn-agent:last-child {
+  padding-right: 0;
+}
+
+.syn-agent + .syn-agent {
+  border-left: var(--hair) solid var(--ink-200);
+}
+
+/* Stacked rather than side by side: a vertical rule between rows would be
+   drawn in the wrong direction, so the divider turns with the layout. */
+@media (max-width: 1100px) {
+  .syn-members {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+
+  .syn-agent,
+  .syn-agent:first-child,
+  .syn-agent:last-child {
+    padding: 12px 0;
+  }
+
+  .syn-agent + .syn-agent {
+    border-left: 0;
+    border-top: var(--hair) solid var(--ink-200);
+  }
+}
+
+/* Un-owned members still explain the comp, but should not read as available. */
+.syn-agent.is-missing {
+  opacity: 0.62;
+}
+
+.syn-agent-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.syn-agent-art {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  overflow: hidden;
+  background: var(--ink-300);
+  border: var(--hair) solid var(--ink-400);
+  clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
+}
+
+.syn-agent-art img {
+  width: 100%;
+  height: 100%;
+  /* Card art is a 3:4 full-body portrait; anchor the crop on the face. */
+  object-fit: cover;
+  object-position: top center;
+}
+
+.syn-agent-initials {
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.syn-agent-id {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+}
+
+.syn-agent-id strong {
+  font-size: 1.15rem;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  color: var(--white);
+}
+
+.syn-missing-tag {
+  font-family: var(--font-tech);
+  font-weight: 700;
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.syn-block + .syn-block {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: var(--hair) solid var(--ink-200);
+}
+
+.syn-label {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--gold);
+}
+
+/* The core passive is supporting detail next to the squad condition. */
+.syn-block.is-core .syn-label {
+  color: var(--muted);
+}
+
+.syn-block.is-core .gx {
+  color: var(--muted);
+}
+
+.syn-block .gx {
+  font-size: 0.84rem;
+  line-height: 1.55;
+}

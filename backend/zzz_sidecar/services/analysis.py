@@ -42,17 +42,25 @@ _CLOSE_AT = 0.60
 _NOT_BUILT_BELOW = 0.20
 
 
-def _normalise(name: str) -> str:
+def normalise_name(name: str) -> str:
     """Fold a display name to a comparison key.
 
     "Branch & Blade Song" / "Branch and Blade Song" / "branch-and-blade-song"
     all collapse to the same token.
+
+    Public because the codex pages match W-Engine and disc set names across the
+    same three sources, and matching them a second way would let the two
+    screens disagree about whether a name is the same name.
     """
     folded = unicodedata.normalize("NFKD", name)
     folded = "".join(c for c in folded if not unicodedata.combining(c))
     folded = folded.lower().replace("&", " and ")
     folded = re.sub(r"[^a-z0-9]+", " ", folded)
     return " ".join(folded.split())
+
+
+#: Internal alias; the module uses the short name throughout.
+_normalise = normalise_name
 
 
 def build_guide_index(guides: list[AgentGuide]) -> dict[str, AgentGuide]:

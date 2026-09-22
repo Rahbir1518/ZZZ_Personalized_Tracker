@@ -44,7 +44,7 @@ frontend/          Electron app
 backend/           Python FastAPI sidecar
   zzz_sidecar/
     routers/       the local HTTP API
-    services/      HoYoLAB, metadata, sync orchestration, and the join/analysis
+    services/      HoYoLAB, metadata, codex lookups, sync orchestration, and the join/analysis
     prydwen/       recommendation adapter (see "About the Prydwen adapter")
     cache/         SQLite cache
   tests/           parser + analysis tests
@@ -126,6 +126,14 @@ persisted across restarts. The remaining count sits under the button. This keeps
 the app a light, predictable consumer of upstream services — HoYoLAB enforces
 its own per-cookie daily limit, and a cold guide refresh is slow by design at a
 10-second crawl delay.
+
+One thing sits outside the sync: the **detail pages** for a W-Engine, a disc set
+or an agent's passives fetch a single small JSON file from the game-data CDN the
+first time you open them, then cache it for the patch. They are behind a click
+and there are well over a hundred of them, so pulling the lot on every sync to
+serve the handful anyone reads would be the wasteful choice. The CDN is not
+Prydwen and sets no crawl delay. Offline, those pages still open — they lose the
+game text and keep the part derived from your own roster.
 
 ---
 

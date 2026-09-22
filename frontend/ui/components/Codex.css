@@ -1,0 +1,387 @@
+/* --- the back arrow ----------------------------------------------------- */
+
+/**
+ * Top-left, mirroring the close button's top-right. Big enough to hit without
+ * aiming, and it names its destination so "back" is never a guess.
+ */
+.cx-back {
+  position: absolute;
+  /* The overlay panel's top-left corner is chamfered (x + y = 22), and the
+     clip takes descendants with it. Sitting at 14/18 keeps the whole button
+     clear of that diagonal; the close button opposite it gets a square corner
+     and can sit tighter. */
+  top: 14px;
+  left: 18px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 14px 0 8px;
+  color: var(--paper);
+  background: var(--ink-300);
+  border: var(--hair) solid var(--ink-400);
+  cursor: pointer;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+.cx-back:hover {
+  background: var(--ink-400);
+  border-color: var(--gold);
+}
+
+.cx-back:focus-visible {
+  outline: var(--edge) solid var(--gold);
+  outline-offset: 2px;
+}
+
+.cx-back-arrow {
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  line-height: 1;
+  color: var(--gold);
+}
+
+.cx-back-text {
+  display: grid;
+  justify-items: start;
+  gap: 0;
+  line-height: 1.05;
+}
+
+.cx-back-text strong {
+  max-width: 24ch;
+  overflow: hidden;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--white);
+}
+
+/* The back bar occupies the top-left, so a page under it starts lower. */
+.cx {
+  display: grid;
+  gap: 20px;
+  padding-top: 30px;
+}
+
+/* --- page header -------------------------------------------------------- */
+
+.cx-head {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding-right: 56px;
+}
+
+.cx-id {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cx-name {
+  margin: 0;
+  font-size: 2.4rem;
+  line-height: 1.02;
+  letter-spacing: 0.01em;
+  color: var(--white);
+}
+
+.cx-tags {
+  margin: 0;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.cx-stats {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin-left: auto;
+}
+
+.cx-stat {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+}
+
+.cx-stat b {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.9rem;
+  line-height: 1;
+  color: var(--white);
+}
+
+.cx-stat-note {
+  max-width: 7ch;
+  line-height: 1.1;
+  color: var(--muted);
+}
+
+/* --- columns ------------------------------------------------------------ */
+
+.cx-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .cx-cols {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cx-col {
+  min-width: 0;
+}
+
+.cx-sub {
+  margin: 16px 0 7px;
+  font-family: var(--font-tech);
+  font-weight: 700;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+}
+
+.cx-sub:first-of-type {
+  margin-top: 4px;
+}
+
+.cx-empty {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.cx-flavour {
+  margin: 16px 0 0;
+  padding-top: 12px;
+  border-top: var(--hair) solid var(--ink-200);
+  font-size: 0.84rem;
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* --- refinement switch -------------------------------------------------- */
+
+.cx-ranks {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.cx-rank {
+  min-width: 38px;
+  height: 26px;
+  font-family: var(--font-tech);
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  color: var(--paper-dim);
+  background: var(--ink-200);
+  border: var(--hair) solid var(--ink-400);
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+
+.cx-rank:hover {
+  border-color: var(--muted);
+}
+
+.cx-rank.is-active {
+  color: var(--ink-000);
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+/* --- set bonuses -------------------------------------------------------- */
+
+.cx-bonus {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 10px 0;
+}
+
+.cx-bonus + .cx-bonus {
+  border-top: var(--hair) solid var(--ink-200);
+}
+
+.cx-pc {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 20px;
+  font-family: var(--font-tech);
+  font-weight: 700;
+  font-size: 0.64rem;
+  letter-spacing: 0.06em;
+  color: var(--paper-dim);
+  background: var(--ink-300);
+  border: var(--hair) solid var(--ink-400);
+}
+
+.cx-pc.is-four {
+  color: var(--ink-000);
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+/* --- who uses it -------------------------------------------------------- */
+
+.cx-mentions {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cx-mention {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 0;
+  min-width: 0;
+}
+
+.cx-mention + .cx-mention {
+  border-top: var(--hair) solid var(--ink-200);
+}
+
+.cx-mention.is-missing {
+  opacity: 0.55;
+}
+
+.cx-mention-art {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  overflow: hidden;
+  background: var(--ink-300);
+  border: var(--hair) solid var(--ink-400);
+}
+
+.cx-mention-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cx-mention-initials {
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.cx-mention-text {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+  margin-right: auto;
+}
+
+.cx-mention-text strong {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+  color: var(--paper);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- the game's own text ------------------------------------------------ */
+
+.gx {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--paper-dim);
+}
+
+.gx-line:empty {
+  display: none;
+}
+
+/**
+ * The colour comes from the game's own markup, applied inline. Weight and
+ * spacing are ours, so a highlight still reads as a highlight if a payload
+ * ever drops the colour.
+ */
+.gx-hl {
+  font-style: normal;
+  font-weight: 700;
+}
+
+/* --- clickable rows, shared by both overlays ---------------------------- */
+
+/**
+ * A row that drills through. It keeps the plain row's layout exactly — the
+ * only change is a hover state and a chevron — because these sit interleaved
+ * with rows that do not navigate, and a button treatment on every one of them
+ * would turn a readable list into a toolbar.
+ */
+.is-link {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.is-link:hover {
+  background: var(--ink-200);
+}
+
+.is-link:hover .dt-row-text strong,
+.is-link:hover .tm-row-text strong {
+  color: var(--gold);
+}
+
+.is-link:focus-visible {
+  outline: var(--edge) solid var(--gold);
+  outline-offset: -2px;
+}
+
+.is-link::after {
+  content: '›';
+  margin-left: auto;
+  padding-left: 6px;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--ink-400);
+  transition: color 120ms ease;
+}
+
+.is-link:hover::after {
+  color: var(--gold);
+}
