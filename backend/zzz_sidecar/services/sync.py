@@ -19,7 +19,11 @@ import time
 import uuid
 
 from ..cache import get_cache
-from ..config import MAX_SYNCS_PER_DAY, PRYDWEN_CACHE_MAX_AGE_SECONDS
+from ..config import (
+    GUIDE_SCHEMA_VERSION,
+    MAX_SYNCS_PER_DAY,
+    PRYDWEN_CACHE_MAX_AGE_SECONDS,
+)
 from ..models import (
     Agent,
     AgentBuild,
@@ -280,12 +284,49 @@ class SyncService:
         cached = self._cache.get_guide(slug, patch or None)
         if cached is None:
             return False
-        _, fetched_at = cached
+
+        payload, fetched_at = cached
+
+        # A guide produced by an older parser is stale even though the patch and
+        # the timestamp both look fine — it is missing fields the app now reads.
+        if payload.get("schema_version", 0) != GUIDE_SCHEMA_VERSION:
+            return False
+
         return time.time() - fetched_at < PRYDWEN_CACHE_MAX_AGE_SECONDS
 
     def _recompute(self) -> None:
         guides = [AgentGuide.model_validate(row) for row in self._cache.all_guides()]
+        self._backfill_icons(guides)
         self._analysis = run_analysis(self._agents, self._builds, guides)
+
+    def _backfill_icons(self, guides: list[AgentGuide]) -> None:
+        """Give un-owned agents a portrait.
+
+        HoYoLAB only supplies art for agents the user owns, and hakush.in's
+        published image URLs 404, so un-owned tiles would otherwise render as
+        bare initials. Prydwen's team rows carry a plain CDN portrait for every
+        agent they mention, which covers essentially the whole roster.
+        """
+        portraits: dict[str, str] = {}
+        for guide in guides:
+            for team in guide.teams:
+                for member in team.members:
+                    if member.icon:
+                        portraits.setdefault(_normalise(member.name), member.icon)
+
+        if not portraits:
+            return
+
+        for agent in self._agents:
+            if agent.square_icon:
+                continue
+            for key in (agent.name, agent.full_name):
+                icon = portraits.get(_normalise(key)) if key else None
+                if icon:
+                    agent.square_icon = icon
+                    if not agent.rectangle_icon:
+                        agent.rectangle_icon = icon
+                    break
 
     def load_from_cache(self) -> None:
         """Populate the in-memory view at startup so the UI has something to

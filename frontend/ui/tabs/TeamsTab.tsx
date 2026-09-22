@@ -8,7 +8,7 @@
 
 import { useState } from 'react'
 import { EmptyState, InkMeter, Panel, SpeechBubble } from '../components/ComicBits'
-import type { Analysis, TeamStatus } from '../types'
+import type { Analysis, TeamMember, TeamStatus } from '../types'
 import './TeamsTab.css'
 
 type SubTab = 'mine' | 'suggested'
@@ -99,36 +99,49 @@ export function TeamsTab({ analysis, loading }: Props): React.JSX.Element {
 
 function TeamCard({ team, index }: { team: TeamStatus; index: number }): React.JSX.Element {
   const missing = team.missing_members.length
+  const owned = new Set(team.owned_members)
+
+  // Prefer the parsed members (they carry portraits); fall back to bare names
+  // if a guide predates the icons being captured.
+  const roster: TeamMember[] =
+    team.team.members.length > 0
+      ? team.team.members
+      : team.team.agent_names.map((name) => ({ name, icon: '', slug: '' }))
 
   return (
     <Panel tilt={index % 2 === 0 ? 'left' : 'right'} className="team-card">
       <header className="team-card-head">
-        <h3 className="display team-card-title">
-          {team.team.agent_names.join('  ·  ')}
-        </h3>
+        <h3 className="display team-card-title">{team.team.agent_names.join('  ·  ')}</h3>
         {team.fieldable ? (
           <span className="team-chip team-chip-ready">Ready</span>
         ) : (
-          <span className="team-chip team-chip-missing">
-            {missing} missing
-          </span>
+          <span className="team-chip team-chip-missing">{missing} missing</span>
         )}
       </header>
 
       {team.team.note !== '' && <p className="team-card-note">{team.team.note}</p>}
 
-      <div className="team-card-members">
-        {team.owned_members.map((name) => (
-          <span key={name} className="team-member team-member-owned">
-            {name}
-          </span>
-        ))}
-        {team.missing_members.map((name) => (
-          <span key={name} className="team-member team-member-missing">
-            {name}
-          </span>
-        ))}
-      </div>
+      <ul className="team-portraits">
+        {roster.map((member, slot) => {
+          const isOwned = owned.has(member.name)
+          return (
+            <li
+              key={`${member.name}-${slot}`}
+              className={`team-portrait ${isOwned ? 'is-owned' : 'is-missing'}`}
+              title={isOwned ? member.name : `${member.name} — not owned`}
+            >
+              <span className="team-portrait-art">
+                {member.icon !== '' ? (
+                  <img src={member.icon} alt="" loading="lazy" draggable={false} />
+                ) : (
+                  <span className="team-portrait-initials display">{member.name.slice(0, 2)}</span>
+                )}
+              </span>
+              <span className="team-portrait-name">{member.name}</span>
+            </li>
+          )
+        })}
+      </ul>
 
       {team.fieldable && (
         <div className="team-card-readiness">
@@ -141,9 +154,7 @@ function TeamCard({ team, index }: { team: TeamStatus; index: number }): React.J
       )}
 
       {!team.fieldable && missing === 1 && (
-        <SpeechBubble>
-          One agent away — {team.missing_members[0]} unlocks this comp.
-        </SpeechBubble>
+        <SpeechBubble>One agent away — {team.missing_members[0]} unlocks this comp.</SpeechBubble>
       )}
     </Panel>
   )

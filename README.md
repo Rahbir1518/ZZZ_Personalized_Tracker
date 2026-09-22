@@ -205,9 +205,15 @@ cargo install --git https://github.com/0xMassi/webclaw.git --locked webclaw-cli
 # or download a prebuilt binary from the project's GitHub releases
 ```
 
-The app finds it on `PATH`, or via the `WEBCLAW_BIN` environment variable
-pointing at the executable. Without it the app still runs — the sync just
-reports the block and the recommendation views stay empty.
+The app looks for it in three places, in order:
+
+1. the `WEBCLAW_BIN` environment variable, pointing at the executable,
+2. anywhere on `PATH`,
+3. `tools/webclaw.exe` in this repo — gitignored, so dropping a copy there is a
+   local convenience and is never committed.
+
+Without it the app still runs; the sync just reports the block and the
+recommendation views stay empty.
 
 If you are from Prydwen and would like to discuss this, please open an issue.
 

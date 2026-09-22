@@ -37,10 +37,12 @@ import time
 
 from selectolax.parser import HTMLParser, Node
 
+from ..config import GUIDE_SCHEMA_VERSION
 from ..models import (
     AgentGuide,
     DiscSetRecommendation,
     EngineRecommendation,
+    TeamMember,
     TeamRecommendation,
 )
 from .http import BASE_URL, clean_image_url
@@ -235,6 +237,7 @@ class HtmlPrydwenSource:
             # patch is stamped by the sync service from the metadata source;
             # Prydwen does not state it in a machine-readable way.
             patch="",
+            schema_version=GUIDE_SCHEMA_VERSION,
             fetched_at=time.time(),
             source_url=f"{BASE_URL}/zenless/characters/{slug}",
         )
@@ -374,28 +377,39 @@ class HtmlPrydwenSource:
         return out
 
     def _parse_teams(self, tree: HTMLParser) -> list[TeamRecommendation]:
-        """``.team-row`` blocks from the Shiyu Defense usage tables."""
+        """``.team-row`` blocks from the Shiyu Defense usage tables.
+
+        Team member portraits come straight off Prydwen's CDN here (plain
+        ``cdn.prydwen.gg`` URLs, not the ``/_next/image`` wrapper), so the UI
+        can show faces instead of a list of names.
+        """
         out: list[TeamRecommendation] = []
-        for row in tree.css(".team-row"):
-            members = [
-                name
-                for name, _ in (
-                    _img_name_and_icon(span) for span in row.css(".column.characters span")
+        for row in tree.css(".column.characters"):
+            members: list[TeamMember] = []
+            for span in row.css("span"):
+                name, icon = _img_name_and_icon(span)
+                if not name:
+                    continue
+                link = span.css_first("a")
+                href = (link.attributes.get("href") or "").rstrip("/") if link is not None else ""
+                members.append(
+                    TeamMember(name=name, icon=icon, slug=href.rsplit("/", 1)[-1] if href else "")
                 )
-                if name
-            ]
+
             if not members:
                 continue
 
-            info = row.css_first(".column.info")
+            info = row.parent.css_first(".column.info") if row.parent is not None else None
             note_parts = [
                 _text(info.css_first(".rank")) if info is not None else "",
                 _text(info.css_first(".usage")) if info is not None else "",
             ]
+            names = [m.name for m in members]
             out.append(
                 TeamRecommendation(
-                    name=" / ".join(members),
-                    agent_names=members,
+                    name=" / ".join(names),
+                    agent_names=names,
+                    members=members,
                     note=" - ".join(p for p in note_parts if p),
                 )
             )

@@ -47,6 +47,21 @@ def test_discovery_falls_back_to_path(monkeypatch):
     assert find_webclaw() == "/usr/bin/webclaw"
 
 
+def test_discovery_finds_a_binary_dropped_in_the_repo_tools_dir(monkeypatch, tmp_path):
+    monkeypatch.setattr("zzz_sidecar.prydwen.transport.shutil.which", lambda _name: None)
+    monkeypatch.setattr("zzz_sidecar.prydwen.transport._LOCAL_TOOLS_DIR", tmp_path)
+    binary = tmp_path / "webclaw.exe"
+    binary.write_text("", encoding="utf-8")
+
+    assert find_webclaw() == str(binary)
+
+
+def test_discovery_returns_none_when_webclaw_is_nowhere(monkeypatch, tmp_path):
+    monkeypatch.setattr("zzz_sidecar.prydwen.transport.shutil.which", lambda _name: None)
+    monkeypatch.setattr("zzz_sidecar.prydwen.transport._LOCAL_TOOLS_DIR", tmp_path)
+    assert find_webclaw() is None
+
+
 # -- selection -------------------------------------------------------------- #
 
 

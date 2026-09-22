@@ -66,3 +66,32 @@ def test_the_count_survives_a_restart(cache: Cache):
 
     # A new process opening the same database sees the same quota.
     assert Cache(path).syncs_today() == 2
+
+
+# -- guide cache invalidation ------------------------------------------------ #
+
+
+def test_a_guide_from_an_older_parser_is_not_considered_fresh(monkeypatch, tmp_path):
+    """An improved parser must invalidate its own stale output.
+
+    Patch-keyed caching cannot catch this: the game patch has not changed, only
+    the parser has, so without a schema version the app would serve guides
+    missing newly-extracted fields forever.
+    """
+    import time as _time
+
+    from zzz_sidecar.config import GUIDE_SCHEMA_VERSION
+    from zzz_sidecar.deps import get_sync
+
+    cache = Cache(tmp_path / "cache.sqlite3")
+    service = get_sync()
+    monkeypatch.setattr(service, "_cache", cache)
+
+    stale = {"slug": "miyabi", "agent_name": "Miyabi", "schema_version": GUIDE_SCHEMA_VERSION - 1}
+    cache.put_guide("miyabi", "1.0", stale, "")
+    assert service._is_guide_fresh("miyabi", "1.0") is False
+
+    current = {**stale, "schema_version": GUIDE_SCHEMA_VERSION}
+    cache.put_guide("miyabi", "1.0", current, "")
+    assert service._is_guide_fresh("miyabi", "1.0") is True
+    assert _time.time() > 0  # sanity: the freshness check also uses wall clock

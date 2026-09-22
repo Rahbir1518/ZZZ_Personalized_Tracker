@@ -120,9 +120,20 @@ class EngineRecommendation(BaseModel):
     recommended_superimpose: int = 0
 
 
+class TeamMember(BaseModel):
+    """One slot in a recommended team, with art for display."""
+
+    name: str
+    icon: str = ""
+    slug: str = ""
+
+
 class TeamRecommendation(BaseModel):
     name: str = ""
+    #: Display names, in team order. This is the key everything matches on;
+    #: `members` carries the same agents with their art attached.
     agent_names: list[str] = Field(default_factory=list)
+    members: list[TeamMember] = Field(default_factory=list)
     note: str = ""
 
 
@@ -141,6 +152,8 @@ class AgentGuide(BaseModel):
     #: Game patch this guide was cached against. Supplied by the sync service
     #: from the metadata source, not scraped from the page.
     patch: str = ""
+    #: Parser version that produced this guide. Older entries are refetched.
+    schema_version: int = 0
     fetched_at: float = 0.0
     source_url: str = ""
 

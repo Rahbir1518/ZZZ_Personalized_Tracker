@@ -54,6 +54,39 @@ def _normalise(name: str) -> str:
     return " ".join(folded.split())
 
 
+def build_guide_index(guides: list[AgentGuide]) -> dict[str, AgentGuide]:
+    """Index guides under every key an agent might be found by.
+
+    HoYoLAB and Prydwen mostly agree on short display names, but not always:
+    Prydwen's heading for Jane reads "Jane Doe" while HoYoLAB calls her "Jane".
+    Indexing the slug as well covers that, since the slug is ``jane-doe``.
+
+    Exact names win: a later, less specific key never overwrites one already
+    claimed, so "Anby" cannot be stolen by "Anby: Soldier 0".
+    """
+    index: dict[str, AgentGuide] = {}
+    for guide in guides:
+        index.setdefault(_normalise(guide.agent_name), guide)
+    for guide in guides:
+        index.setdefault(_normalise(guide.slug), guide)
+    return index
+
+
+def find_guide(agent: Agent, index: dict[str, AgentGuide]) -> AgentGuide | None:
+    """Find an agent's guide, trying the display name then the full name.
+
+    ``full_name`` is the fallback that resolves Jane -> "Jane Doe",
+    Billy -> "Billy Kid" and friends.
+    """
+    for candidate in (agent.name, agent.full_name):
+        if not candidate:
+            continue
+        guide = index.get(_normalise(candidate))
+        if guide is not None:
+            return guide
+    return None
+
+
 def _equipped_set_counts(build: AgentBuild) -> Counter[str]:
     """How many discs of each set the agent currently wears."""
     return Counter(
@@ -175,14 +208,19 @@ def evaluate_teams(
     owned_names: set[str],
     gaps_by_name: dict[str, BuildGap],
 ) -> tuple[list[TeamStatus], list[TeamStatus]]:
-    """Split recommended teams into fieldable ("My Teams") and aspirational.
+    """Split recommended teams into fieldable ("My Teams") and suggested.
 
     Teams are deduplicated across guides — the same comp appears on every
     member's page.
+
+    **Suggested teams must include at least one agent the user owns.** Prydwen
+    lists every meta comp in the game; a team where the user owns nobody is not
+    a suggestion, it is noise. Requiring one owned member is what makes the tab
+    read as "teams you could build toward" rather than a dump of the meta.
     """
     seen: set[tuple[str, ...]] = set()
     fieldable: list[TeamStatus] = []
-    aspirational: list[TeamStatus] = []
+    suggested: list[TeamStatus] = []
 
     for guide in guides:
         for team in guide.teams:
@@ -206,12 +244,16 @@ def evaluate_teams(
                 missing_members=missing,
                 readiness=round(sum(scores) / len(scores), 3) if scores else 0.0,
             )
-            (fieldable if status.fieldable else aspirational).append(status)
+
+            if status.fieldable:
+                fieldable.append(status)
+            elif owned:
+                suggested.append(status)
 
     fieldable.sort(key=lambda t: t.readiness, reverse=True)
-    # Nearly-complete teams first: the ones worth pulling or building toward.
-    aspirational.sort(key=lambda t: (len(t.missing_members), -t.readiness))
-    return fieldable, aspirational
+    # Nearly-complete first: most owned members, then fewest missing.
+    suggested.sort(key=lambda t: (-len(t.owned_members), len(t.missing_members), -t.readiness))
+    return fieldable, suggested
 
 
 def suggest_farming(gaps: list[BuildGap], teams: list[TeamStatus]) -> list[FarmingPriority]:
@@ -268,13 +310,19 @@ def run_analysis(
     guides: list[AgentGuide],
 ) -> Analysis:
     """Full pass: per-agent gaps, team status, farming priorities."""
-    guides_by_name = {_normalise(g.agent_name): g for g in guides}
+    index = build_guide_index(guides)
     owned = [a for a in agents if a.owned]
-    owned_names = {_normalise(a.name) for a in owned}
+
+    # Prydwen names a team's members inconsistently with HoYoLAB (its team rows
+    # may say "Jane Doe" where the roster says "Jane"), so register both spellings.
+    owned_names: set[str] = set()
+    for agent in owned:
+        owned_names.add(_normalise(agent.name))
+        if agent.full_name:
+            owned_names.add(_normalise(agent.full_name))
 
     gaps = [
-        evaluate_build(agent, builds.get(agent.id), guides_by_name.get(_normalise(agent.name)))
-        for agent in owned
+        evaluate_build(agent, builds.get(agent.id), find_guide(agent, index)) for agent in owned
     ]
     gaps.sort(key=lambda g: g.score, reverse=True)
     gaps_by_name = {_normalise(g.agent_name): g for g in gaps}

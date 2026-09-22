@@ -76,20 +76,35 @@ export function SyncButton({ onFinished }: { onFinished?: () => void }): React.J
     return () => window.clearInterval(handle)
   }, [status?.running, refresh])
 
+  // Keep the latest callback in a ref so it is not an effect dependency.
+  // Callers pass an inline arrow, which changes identity on every parent
+  // render; depending on it would re-run the effect constantly.
+  const onFinishedRef = useRef(onFinished)
+  useEffect(() => {
+    onFinishedRef.current = onFinished
+  }, [onFinished])
+
   // Fire the completion callback (and the burst) on the running -> idle edge.
   useEffect(() => {
     const running = status?.running === true
-    if (wasRunning.current && !running) {
-      onFinished?.()
-      if (status?.cancelled !== true) {
-        setCelebrating(true)
-        const handle = window.setTimeout(() => setCelebrating(false), CELEBRATE_MS)
-        return () => window.clearTimeout(handle)
-      }
-    }
+    const justFinished = wasRunning.current && !running
+
+    // Update the guard *before* any early return. Leaving it stale made this
+    // effect re-detect the same edge on every subsequent render, so the
+    // completion callback refetched in a loop and the UI flickered between
+    // "loading" and an error.
     wasRunning.current = running
-    return undefined
-  }, [status?.running, status?.cancelled, onFinished])
+
+    if (!justFinished) return undefined
+
+    onFinishedRef.current?.()
+
+    if (status?.cancelled === true) return undefined
+
+    setCelebrating(true)
+    const handle = window.setTimeout(() => setCelebrating(false), CELEBRATE_MS)
+    return () => window.clearTimeout(handle)
+  }, [status?.running, status?.cancelled])
 
   const start = async (): Promise<void> => {
     try {

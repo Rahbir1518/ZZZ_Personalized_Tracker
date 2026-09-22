@@ -16,10 +16,17 @@ from zzz_sidecar.models import (
     EngineRecommendation,
     GapSeverity,
     Property,
+    TeamMember,
     TeamRecommendation,
     WEngine,
 )
-from zzz_sidecar.services.analysis import _normalise, evaluate_build, run_analysis
+from zzz_sidecar.services.analysis import (
+    _normalise,
+    build_guide_index,
+    evaluate_build,
+    find_guide,
+    run_analysis,
+)
 
 
 def agent(agent_id: int, name: str, *, owned: bool = True) -> Agent:
@@ -201,3 +208,153 @@ def test_unowned_agents_are_excluded_from_build_gaps():
     agents = [agent(1, "Testagent"), agent(2, "Ghost", owned=False)]
     result = run_analysis(agents, {}, [guide("Testagent")])
     assert [g.agent_name for g in result.build_gaps] == ["Testagent"]
+
+
+# -- name matching across the two sources ----------------------------------- #
+
+
+def test_a_guide_is_found_by_full_name_when_the_short_name_differs():
+    # HoYoLAB calls her "Jane"; Prydwen's heading reads "Jane Doe". Matching on
+    # the display name alone silently dropped her guide.
+    jane = Agent(id=99, name="Jane", full_name="Jane Doe", owned=True, level=40, mindscape=0)
+    index = build_guide_index([guide("Jane Doe")])
+
+    found = find_guide(jane, index)
+    assert found is not None and found.agent_name == "Jane Doe"
+
+
+def test_a_guide_is_found_by_slug_when_neither_name_matches():
+    agent = Agent(id=98, name="Yuzuha", full_name="Ukinami Yuzuha", owned=True)
+    hit = guide("Someone Else")
+    hit.slug = "ukinami-yuzuha"
+    index = build_guide_index([hit])
+
+    assert find_guide(agent, index) is hit
+
+
+def test_an_exact_name_is_never_stolen_by_a_longer_variant():
+    # "Anby" and "Anby: Soldier 0" are different agents.
+    anby = Agent(id=1, name="Anby", full_name="Anby Demara", owned=True)
+    exact, variant = guide("Anby"), guide("Anby: Soldier 0")
+
+    found = find_guide(anby, build_guide_index([variant, exact]))
+    assert found is not None and found.agent_name == "Anby"
+
+
+def test_an_unknown_agent_matches_nothing():
+    stranger = Agent(id=97, name="Nobody", full_name="Nobody At All", owned=True)
+    assert find_guide(stranger, build_guide_index([guide("Testagent")])) is None
+
+
+# -- suggested-team filtering ------------------------------------------------ #
+
+
+def test_a_comp_with_no_owned_members_is_not_suggested():
+    # Prydwen lists every meta comp; one where the user owns nobody is noise.
+    guides = [
+        guide(
+            "Testagent",
+            teams=[
+                TeamRecommendation(agent_names=["Stranger A", "Stranger B", "Stranger C"]),
+                TeamRecommendation(agent_names=["Testagent", "Stranger A"]),
+            ],
+        )
+    ]
+    result = run_analysis([agent(1, "Testagent")], {}, guides)
+
+    suggested = [t.team.agent_names for t in result.suggested_teams]
+    assert suggested == [["Testagent", "Stranger A"]]
+
+
+def test_suggested_teams_lead_with_the_ones_you_have_most_of():
+    guides = [
+        guide(
+            "Testagent",
+            teams=[
+                TeamRecommendation(agent_names=["Testagent", "Stranger A", "Stranger B"]),
+                TeamRecommendation(agent_names=["Testagent", "Supportagent", "Stranger A"]),
+            ],
+        )
+    ]
+    agents = [agent(1, "Testagent"), agent(2, "Supportagent")]
+    result = run_analysis(agents, {}, guides)
+
+    assert result.suggested_teams[0].owned_members == ["Testagent", "Supportagent"]
+
+
+def test_team_membership_matches_on_full_name_too():
+    # Prydwen's team rows may spell a member differently from the roster.
+    guides = [guide("Testagent", teams=[TeamRecommendation(agent_names=["Jane Doe", "Testagent"])])]
+    agents = [
+        agent(1, "Testagent"),
+        Agent(id=2, name="Jane", full_name="Jane Doe", owned=True, level=40, mindscape=0),
+    ]
+    result = run_analysis(agents, {}, guides)
+
+    assert [t.team.agent_names for t in result.my_teams] == [["Jane Doe", "Testagent"]]
+
+
+# -- portrait backfill ------------------------------------------------------- #
+
+
+def test_unowned_agents_borrow_portraits_from_team_rows(monkeypatch, tmp_path):
+    """Un-owned tiles would otherwise render as bare initials.
+
+    HoYoLAB only supplies art for owned agents and hakush.in's image URLs 404,
+    so the portraits come from Prydwen's team rows, which name and picture
+    every agent they mention.
+    """
+    from zzz_sidecar.cache.db import Cache
+    from zzz_sidecar.deps import get_sync
+
+    service = get_sync()
+    monkeypatch.setattr(service, "_cache", Cache(tmp_path / "cache.sqlite3"))
+
+    owned = Agent(id=1, name="Testagent", owned=True)
+    ghost = Agent(id=2, name="Yuzuha", full_name="Ukinami Yuzuha", owned=False)
+    service._agents = [owned, ghost]
+    service._builds = {}
+
+    guides = [
+        guide(
+            "Testagent",
+            teams=[
+                TeamRecommendation(
+                    agent_names=["Testagent", "Yuzuha"],
+                    members=[
+                        TeamMember(name="Testagent", icon="https://cdn/test.webp"),
+                        TeamMember(name="Yuzuha", icon="https://cdn/yuzuha.webp"),
+                    ],
+                )
+            ],
+        )
+    ]
+
+    service._backfill_icons(guides)
+    assert ghost.square_icon == "https://cdn/yuzuha.webp"
+
+
+def test_backfill_never_overwrites_the_users_own_hoyolab_art(monkeypatch, tmp_path):
+    from zzz_sidecar.cache.db import Cache
+    from zzz_sidecar.deps import get_sync
+
+    service = get_sync()
+    monkeypatch.setattr(service, "_cache", Cache(tmp_path / "cache.sqlite3"))
+
+    owned = Agent(id=1, name="Testagent", owned=True, square_icon="https://hoyolab/mine.png")
+    service._agents = [owned]
+
+    service._backfill_icons(
+        [
+            guide(
+                "Testagent",
+                teams=[
+                    TeamRecommendation(
+                        agent_names=["Testagent"],
+                        members=[TeamMember(name="Testagent", icon="https://cdn/other.webp")],
+                    )
+                ],
+            )
+        ]
+    )
+    assert owned.square_icon == "https://hoyolab/mine.png"

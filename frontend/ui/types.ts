@@ -86,9 +86,18 @@ export interface EngineRecommendation {
   recommended_superimpose: number
 }
 
+export interface TeamMember {
+  name: string
+  icon: string
+  slug: string
+}
+
 export interface TeamRecommendation {
   name: string
+  /** Display names in team order; the key everything matches on. */
   agent_names: string[]
+  /** The same agents with their art attached, for display. */
+  members: TeamMember[]
   note: string
 }
 

@@ -75,21 +75,37 @@ class _RateLimited:
         self._lock.release()
 
 
+#: Repo-local drop spot for the binary: <repo>/tools/. Gitignored, so placing a
+#: copy here is a convenience for the person running the app, not redistribution.
+_LOCAL_TOOLS_DIR = Path(__file__).resolve().parents[3] / "tools"
+
+
 def find_webclaw() -> str | None:
     """Locate a user-installed webclaw binary.
 
-    Checked in order: the ``WEBCLAW_BIN`` override, then PATH. Deliberately does
-    **not** look inside the app bundle — we do not ship it (see the licence note
-    at the top of this module).
+    Checked in order: the ``WEBCLAW_BIN`` override, then PATH, then the repo's
+    gitignored ``tools/`` directory.
+
+    A dangling ``WEBCLAW_BIN`` is an error rather than a reason to fall through —
+    if someone set an override, silently ignoring it hides the mistake.
+
+    Note this never looks inside the packaged app: webclaw is AGPL-3.0 and is
+    not shipped (see the licence note at the top of this module).
     """
     override = os.environ.get("WEBCLAW_BIN", "").strip()
     if override:
         candidate = Path(override)
-        if candidate.is_file():
-            return str(candidate)
-        return None
+        return str(candidate) if candidate.is_file() else None
 
-    return shutil.which("webclaw")
+    on_path = shutil.which("webclaw")
+    if on_path is not None:
+        return on_path
+
+    for name in ("webclaw.exe", "webclaw"):
+        local = _LOCAL_TOOLS_DIR / name
+        if local.is_file():
+            return str(local)
+    return None
 
 
 class WebclawTransport:

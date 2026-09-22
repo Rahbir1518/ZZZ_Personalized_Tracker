@@ -14,6 +14,14 @@ USER_AGENT = (
 #: prydwen.gg robots.txt specifies `Crawl-delay: 10` for User-Agent: *.
 PRYDWEN_CRAWL_DELAY_SECONDS = 10.0
 
+#: Bump whenever the Prydwen parser starts extracting something new, so guides
+#: cached by an older parser are refetched instead of being served forever with
+#: fields the app now expects. Patch-keyed caching alone will not catch this:
+#: the patch has not changed, only our parser has.
+#:
+#: 2 - team member portraits; rating/rank split on disc sets.
+GUIDE_SCHEMA_VERSION = 2
+
 #: Prydwen guides are re-fetched only when the cached game patch differs, or
 #: when the entry is older than this regardless of patch.
 PRYDWEN_CACHE_MAX_AGE_SECONDS = 60 * 60 * 24 * 14
