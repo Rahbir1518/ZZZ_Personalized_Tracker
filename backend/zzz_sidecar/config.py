@@ -30,13 +30,15 @@ GUIDE_SCHEMA_VERSION = 5
 #: when the entry is older than this regardless of patch.
 PRYDWEN_CACHE_MAX_AGE_SECONDS = 60 * 60 * 24 * 14
 
-#: Hard cap on full syncs per calendar day (local time).
+#: Hard cap on full syncs per calendar day (local time), per HoYoLAB account —
+#: each uid tracks its own count, so switching accounts doesn't inherit
+#: another account's usage for the day.
 #:
 #: This is about being a light, predictable consumer of upstream services, not
 #: about evading anything: HoYoLAB enforces a real per-cookie daily limit, and a
-#: full Prydwen pass is expensive at a 10s crawl delay. Five is plenty for a
+#: full Prydwen pass is expensive at a 10s crawl delay. Ten is plenty for a
 #: game whose account data changes a few times a day at most.
-MAX_SYNCS_PER_DAY = 5
+MAX_SYNCS_PER_DAY = 10
 
 #: hakushin metadata (catalog + icons) changes only on patch days.
 METADATA_CACHE_MAX_AGE_SECONDS = 60 * 60 * 24 * 3

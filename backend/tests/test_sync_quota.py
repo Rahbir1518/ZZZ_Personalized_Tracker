@@ -23,49 +23,60 @@ def cache() -> Cache:
 
 
 def test_a_fresh_install_has_used_no_syncs(cache: Cache):
-    assert cache.syncs_today() == 0
+    assert cache.syncs_today("800123") == 0
 
 
 def test_each_recorded_run_counts_once(cache: Cache):
     for index in range(3):
-        cache.record_sync_run(f"run-{index}")
-    assert cache.syncs_today() == 3
+        cache.record_sync_run(f"run-{index}", "800123")
+    assert cache.syncs_today("800123") == 3
 
 
 def test_recording_the_same_run_id_twice_does_not_double_count(cache: Cache):
     # start() records once per run; guard against a retry inflating the count.
-    cache.record_sync_run("run-a")
-    cache.record_sync_run("run-a")
-    assert cache.syncs_today() == 1
+    cache.record_sync_run("run-a", "800123")
+    cache.record_sync_run("run-a", "800123")
+    assert cache.syncs_today("800123") == 1
 
 
 def test_the_cap_is_reached_after_the_configured_number_of_runs(cache: Cache):
     for index in range(MAX_SYNCS_PER_DAY):
-        assert cache.syncs_today() < MAX_SYNCS_PER_DAY, "should still be under the cap"
-        cache.record_sync_run(f"run-{index}")
-    assert cache.syncs_today() == MAX_SYNCS_PER_DAY
+        assert cache.syncs_today("800123") < MAX_SYNCS_PER_DAY, "should still be under the cap"
+        cache.record_sync_run(f"run-{index}", "800123")
+    assert cache.syncs_today("800123") == MAX_SYNCS_PER_DAY
 
 
 def test_runs_from_other_days_do_not_count_against_today(cache: Cache):
     yesterday = time.strftime("%Y-%m-%d", time.localtime(time.time() - 86_400))
     cache._write(  # noqa: SLF001 - reaching in to fake a previous day
-        "INSERT INTO sync_run (run_id, started_at, day) VALUES (?, ?, ?)",
-        ("old-run", time.time() - 86_400, yesterday),
+        "INSERT INTO sync_run (run_id, uid, started_at, day) VALUES (?, ?, ?, ?)",
+        ("old-run", "800123", time.time() - 86_400, yesterday),
     )
-    assert cache.syncs_today() == 0
+    assert cache.syncs_today("800123") == 0
 
-    cache.record_sync_run("today-run")
-    assert cache.syncs_today() == 1
+    cache.record_sync_run("today-run", "800123")
+    assert cache.syncs_today("800123") == 1
 
 
 def test_the_count_survives_a_restart(cache: Cache):
-    cache.record_sync_run("run-a")
-    cache.record_sync_run("run-b")
+    cache.record_sync_run("run-a", "800123")
+    cache.record_sync_run("run-b", "800123")
     path = cache._path  # noqa: SLF001
     cache.close()
 
     # A new process opening the same database sees the same quota.
-    assert Cache(path).syncs_today() == 2
+    assert Cache(path).syncs_today("800123") == 2
+
+
+def test_the_quota_is_tracked_per_account(cache: Cache):
+    """Each HoYoLAB account gets its own daily allowance — switching accounts
+    must not inherit or share another account's usage for the day."""
+    for index in range(4):
+        cache.record_sync_run(f"a-run-{index}", "account-a")
+    cache.record_sync_run("b-run-0", "account-b")
+
+    assert cache.syncs_today("account-a") == 4
+    assert cache.syncs_today("account-b") == 1
 
 
 # -- guide cache invalidation ------------------------------------------------ #

@@ -1,160 +1,103 @@
-"""Transport selection and the webclaw subprocess wrapper.
+"""Transport selection and the primp-backed fetch path.
 
-No network here — the point is that discovery, selection and error handling
-behave, not that prydwen.gg is up.
+No network here — the point is that selection and error handling behave, not
+that prydwen.gg is up.
 """
 
 from __future__ import annotations
 
+import primp
 import pytest
 
 from zzz_sidecar.prydwen.source import PrydwenUnavailable
-from zzz_sidecar.prydwen.transport import (
-    HttpxTransport,
-    WebclawTransport,
-    build_transport,
-    find_webclaw,
-)
+from zzz_sidecar.prydwen.transport import HttpxTransport, PrimpTransport, build_transport
+
+# -- selection ---------------------------------------------------------------- #
 
 
-@pytest.fixture(autouse=True)
-def _clear_env(monkeypatch):
-    monkeypatch.delenv("WEBCLAW_BIN", raising=False)
-
-
-# -- discovery -------------------------------------------------------------- #
-
-
-def test_webclaw_bin_override_is_used_when_it_points_at_a_real_file(monkeypatch, tmp_path):
-    binary = tmp_path / "webclaw.exe"
-    binary.write_text("", encoding="utf-8")
-    monkeypatch.setenv("WEBCLAW_BIN", str(binary))
-    assert find_webclaw() == str(binary)
-
-
-def test_a_dangling_webclaw_bin_override_is_not_silently_ignored(monkeypatch, tmp_path):
-    # Falling back to PATH here would be worse: the user set an override and
-    # deserves to be told it is wrong, not to have it quietly bypassed.
-    monkeypatch.setenv("WEBCLAW_BIN", str(tmp_path / "nope.exe"))
-    assert find_webclaw() is None
-
-
-def test_discovery_falls_back_to_path(monkeypatch):
-    monkeypatch.setattr(
-        "zzz_sidecar.prydwen.transport.shutil.which",
-        lambda name: "/usr/bin/webclaw" if name == "webclaw" else None,
-    )
-    assert find_webclaw() == "/usr/bin/webclaw"
-
-
-def test_discovery_finds_a_binary_dropped_in_the_repo_tools_dir(monkeypatch, tmp_path):
-    monkeypatch.setattr("zzz_sidecar.prydwen.transport.shutil.which", lambda _name: None)
-    monkeypatch.setattr("zzz_sidecar.prydwen.transport._LOCAL_TOOLS_DIR", tmp_path)
-    binary = tmp_path / "webclaw.exe"
-    binary.write_text("", encoding="utf-8")
-
-    assert find_webclaw() == str(binary)
-
-
-def test_discovery_returns_none_when_webclaw_is_nowhere(monkeypatch, tmp_path):
-    monkeypatch.setattr("zzz_sidecar.prydwen.transport.shutil.which", lambda _name: None)
-    monkeypatch.setattr("zzz_sidecar.prydwen.transport._LOCAL_TOOLS_DIR", tmp_path)
-    assert find_webclaw() is None
-
-
-# -- selection -------------------------------------------------------------- #
-
-
-def test_explicit_httpx_is_honoured_even_when_webclaw_exists(monkeypatch):
-    monkeypatch.setattr("zzz_sidecar.prydwen.transport.find_webclaw", lambda: "/usr/bin/webclaw")
+def test_explicit_httpx_is_honoured():
     assert isinstance(build_transport("httpx"), HttpxTransport)
 
 
-def test_auto_prefers_webclaw_when_installed(monkeypatch):
-    monkeypatch.setattr("zzz_sidecar.prydwen.transport.find_webclaw", lambda: "/usr/bin/webclaw")
-    assert isinstance(build_transport("auto"), WebclawTransport)
+def test_auto_uses_primp():
+    assert isinstance(build_transport("auto"), PrimpTransport)
 
 
-def test_auto_falls_back_to_httpx_so_the_app_still_runs(monkeypatch):
-    monkeypatch.setattr("zzz_sidecar.prydwen.transport.find_webclaw", lambda: None)
-    assert isinstance(build_transport("auto"), HttpxTransport)
+def test_asking_for_primp_explicitly_also_works():
+    assert isinstance(build_transport("primp"), PrimpTransport)
 
 
-def test_asking_for_webclaw_without_it_installed_says_so(monkeypatch):
-    monkeypatch.setattr("zzz_sidecar.prydwen.transport.find_webclaw", lambda: None)
-    with pytest.raises(PrydwenUnavailable, match="webclaw was not found"):
-        build_transport("webclaw")
+# -- primp client behaviour ---------------------------------------------------- #
 
 
-# -- subprocess behaviour --------------------------------------------------- #
+class _FakeResponse:
+    def __init__(self, text: str = "", status_code: int = 200) -> None:
+        self.text = text
+        self.status_code = status_code
 
 
-class _FakeProcess:
-    """Stands in for the spawned webclaw process."""
+class _FakeAsyncClient:
+    """Stands in for primp.AsyncClient so no network call happens."""
 
-    def __init__(self, stdout: bytes = b"", stderr: bytes = b"", returncode: int = 0) -> None:
-        self._stdout = stdout
-        self._stderr = stderr
-        self.returncode = returncode
-        self.killed = False
+    def __init__(self, response: _FakeResponse | None = None, error: Exception | None = None):
+        self._response = response
+        self._error = error
+        self.requested_url: str | None = None
 
-    async def communicate(self) -> tuple[bytes, bytes]:
-        return self._stdout, self._stderr
-
-    def kill(self) -> None:
-        self.killed = True
-
-
-@pytest.fixture
-def spawned(monkeypatch):
-    """Capture the argv WebclawTransport builds, and control the result."""
-    captured: dict[str, object] = {}
-    process = _FakeProcess()
-
-    async def fake_exec(*args, **kwargs):
-        captured["argv"] = list(args)
-        return captured["process"]
-
-    captured["process"] = process
-    monkeypatch.setattr(
-        "zzz_sidecar.prydwen.transport.asyncio.create_subprocess_exec", fake_exec
-    )
-    return captured
+    async def get(self, url: str) -> _FakeResponse:
+        self.requested_url = url
+        if self._error is not None:
+            raise self._error
+        assert self._response is not None
+        return self._response
 
 
-async def test_the_right_url_and_flags_are_passed_to_webclaw(spawned):
-    spawned["process"] = _FakeProcess(stdout=b"<html><body>hello</body></html>")
-    transport = WebclawTransport(binary="/bin/webclaw")
+def _transport_with(fake_client: _FakeAsyncClient) -> PrimpTransport:
+    transport = PrimpTransport.__new__(PrimpTransport)
+    from zzz_sidecar.prydwen.transport import _RateLimited
+
+    transport._gate = _RateLimited(crawl_delay=0.0)
+    transport._client = fake_client
+    return transport
+
+
+async def test_the_right_url_is_requested():
+    fake = _FakeAsyncClient(_FakeResponse(text="<html><body>hello</body></html>"))
+    transport = _transport_with(fake)
 
     html = await transport.get_html("/zenless/characters/miyabi")
 
     assert html == "<html><body>hello</body></html>"
-    argv = spawned["argv"]
-    assert argv[0] == "/bin/webclaw"
-    assert argv[1] == "https://www.prydwen.gg/zenless/characters/miyabi"
-    # HTML, not markdown — the parser needs the real DOM.
-    assert "--format" in argv and argv[argv.index("--format") + 1] == "html"
+    assert fake.requested_url == "https://www.prydwen.gg/zenless/characters/miyabi"
 
 
-async def test_a_nonzero_exit_becomes_prydwen_unavailable(spawned):
-    spawned["process"] = _FakeProcess(stderr=b"boom", returncode=3)
-    transport = WebclawTransport(binary="/bin/webclaw")
+async def test_a_non_200_status_becomes_prydwen_unavailable():
+    fake = _FakeAsyncClient(_FakeResponse(text="nope", status_code=500))
+    transport = _transport_with(fake)
 
-    with pytest.raises(PrydwenUnavailable, match="exited 3"):
+    with pytest.raises(PrydwenUnavailable, match="HTTP 500"):
         await transport.get_html("/zenless/characters/miyabi")
 
 
-async def test_empty_output_is_treated_as_a_failure(spawned):
-    # webclaw exits 0 even for a page it could not fetch, so empty stdout is
-    # the only transport-level signal that something went wrong.
-    spawned["process"] = _FakeProcess(stdout=b"   \n", returncode=0)
-    transport = WebclawTransport(binary="/bin/webclaw")
+async def test_a_cloudflare_challenge_is_reported_distinctly():
+    fake = _FakeAsyncClient(_FakeResponse(text="just a moment", status_code=403))
+    transport = _transport_with(fake)
+
+    with pytest.raises(PrydwenUnavailable, match="Cloudflare"):
+        await transport.get_html("/zenless/characters/miyabi")
+
+
+async def test_empty_body_is_treated_as_a_failure():
+    fake = _FakeAsyncClient(_FakeResponse(text="   \n", status_code=200))
+    transport = _transport_with(fake)
 
     with pytest.raises(PrydwenUnavailable, match="returned nothing"):
         await transport.get_html("/zenless/characters/miyabi")
 
 
-async def test_a_missing_binary_is_reported_not_crashed():
-    transport = WebclawTransport(binary="/definitely/not/a/real/binary")
-    with pytest.raises(PrydwenUnavailable):
-        await transport.get_html("/zenless/characters/anyone")
+async def test_a_primp_error_is_reported_not_crashed():
+    fake = _FakeAsyncClient(error=primp.ConnectError("boom"))
+    transport = _transport_with(fake)
+
+    with pytest.raises(PrydwenUnavailable, match="failed"):
+        await transport.get_html("/zenless/characters/miyabi")

@@ -70,7 +70,7 @@ class SyncService:
         last = self._cache.last_sync_times()
         for progress in self._status.sources:
             progress.last_success_at = last.get(progress.source)
-        self._status.syncs_used_today = self._cache.syncs_today()
+        self._status.syncs_used_today = self._cache.syncs_today(self._hoyolab.uid)
         self._status.syncs_per_day = MAX_SYNCS_PER_DAY
         return self._status
 
@@ -102,9 +102,11 @@ class SyncService:
             if self._status.running:
                 return self.status
 
-            # Daily cap. Refuse rather than queue: a sync the user cannot see
-            # finish is worse than a clear "not today".
-            if self._cache.syncs_today() >= MAX_SYNCS_PER_DAY:
+            # Daily cap, tracked per account: refuse rather than queue, since a
+            # sync the user cannot see finish is worse than a clear "not
+            # today", and count only this uid's own runs so switching accounts
+            # doesn't inherit another account's usage for the day.
+            if self._cache.syncs_today(self._hoyolab.uid) >= MAX_SYNCS_PER_DAY:
                 self._status.quota_exhausted = True
                 self._status.running = False
                 return self.status
@@ -116,7 +118,7 @@ class SyncService:
                 started_at=time.time(),
                 sources=[SourceProgress(source=s) for s in _SOURCES],
             )
-            self._cache.record_sync_run(self._status.run_id)
+            self._cache.record_sync_run(self._status.run_id, self._hoyolab.uid)
             self._task = asyncio.create_task(self._run(force_guides=force_guides))
             return self.status
 

@@ -165,7 +165,7 @@ class HtmlPrydwenSource:
     """``PrydwenSource`` backed by the rendered guide pages."""
 
     def __init__(self, transport: Transport | None = None) -> None:
-        # Defaults to webclaw when installed, else plain httpx. See
+        # Defaults to the primp (browser-impersonating) transport. See
         # transport.py for why that choice exists at all.
         self._transport = transport if transport is not None else build_transport()
 
@@ -183,9 +183,10 @@ class HtmlPrydwenSource:
         (``anby-demara`` vs ``Anby``, ``ukinami-yuzuha`` vs ``Yuzuha``), so
         derived slugs would 404 on roughly a fifth of the roster.
 
-        The index is client-rendered, so there is no dependable DOM here — some
-        transports return extracted markdown rather than HTML. Both carry the
-        links, so match on the URL shape and accept either.
+        The index page is a client-side filterable list, so there is no
+        dependable DOM to select against here — Gatsby still statically
+        prerenders the full link list into the served HTML, so regex-matching
+        the URL shape is what survives that without depending on structure.
         """
         document = await self._transport.get_html("/zenless/characters")
 

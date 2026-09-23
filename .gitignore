@@ -63,7 +63,3 @@ venv/
 .idea/
 .DS_Store
 Thumbs.db
-
-# Locally-installed helper binaries. webclaw is AGPL-3.0 and this repo is MIT —
-# it is a user-installed prerequisite, never redistributed here.
-/tools/

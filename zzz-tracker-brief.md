@@ -291,8 +291,9 @@ the app — no per-panel reload buttons.
   reflects in-flight state.
 - **Cancellable**, since a cold Prydwen sync takes minutes at a 10s delay.
 - **Cold start:** the first sync after login is a full fetch of everything.
-- **Capped at 5 full syncs per calendar day** (local midnight reset), persisted
-  in SQLite so it survives restarts. The remaining count is shown under the
+- **Capped at 10 full syncs per calendar day, per HoYoLAB account** (local
+  midnight reset), persisted in SQLite so it survives restarts. The remaining
+  count is shown under the
   button, which disables itself at zero. This keeps the app a light, predictable
   consumer of upstream services — HoYoLAB enforces its own per-cookie daily
   limit, and a cold Prydwen pass is expensive at a 10s crawl delay. Note this is
@@ -472,13 +473,14 @@ clients:
 - The same URLs return **200 via `curl`**, which is what makes the
   fingerprinting visible.
 
-**Resolved by project decision: fetch via [webclaw](https://github.com/0xMassi/webclaw).**
+**Resolved by project decision: fetch via [primp](https://github.com/deedy5/primp).**
 
-webclaw is a Rust extraction CLI that requests using a browser TLS profile
-(`--browser chrome`), which passes the challenge. Stated plainly: this works by
-**impersonating Chrome**, i.e. circumventing an anti-bot control the site owner
-deliberately enabled. robots.txt permitting `/` does not by itself settle that —
-the challenge is a separate, active signal. This was chosen knowingly.
+primp is a Rust-backed HTTP client with Python bindings that requests using a
+browser TLS profile (`impersonate="chrome"`), which passes the challenge.
+Stated plainly: this works by **impersonating Chrome**, i.e. circumventing an
+anti-bot control the site owner deliberately enabled. robots.txt permitting `/`
+does not by itself settle that — the challenge is a separate, active signal.
+This was chosen knowingly.
 
 Verified end to end: 64 agent slugs discovered, and guides parsed identically to
 the raw page (Miyabi and Qingyi both correct), with the 10s crawl delay honoured
@@ -486,21 +488,22 @@ between requests.
 
 Implementation notes:
 
-- Transport is now a separate concern (`prydwen/transport.py`) behind a
-  `Transport` protocol. `WebclawTransport` and `HttpxTransport` both implement
-  it; the parser never knows which ran. `build_transport()` prefers webclaw when
-  installed and falls back to httpx, which then reports the block rather than
-  silently returning nothing.
-- **Licensing:** webclaw is AGPL-3.0 and this project is MIT. It is run as a
-  **separate process**, never linked, and the binary is **not bundled** — it is
-  a user-installed prerequisite found on `PATH` or via `WEBCLAW_BIN`. Bundling
-  it would trigger AGPL redistribution obligations (licence text plus a
-  corresponding source offer).
-- The agent index is client-rendered, so webclaw returns extracted markdown for
-  it rather than HTML. Slug discovery therefore matches on the URL shape and
-  accepts either form. Slugs **must** come from Prydwen — slugifying catalog
-  names fails on about a fifth of the roster (`anby-demara` vs `Anby`,
-  `ukinami-yuzuha` vs `Yuzuha`).
+- Transport is a separate concern (`prydwen/transport.py`) behind a `Transport`
+  protocol. `PrimpTransport` and `HttpxTransport` both implement it; the parser
+  never knows which ran. `build_transport()` uses primp by default and falls
+  back to httpx only on explicit request, which then reports the block rather
+  than silently returning nothing.
+- **Licensing:** primp is MIT, same as this project, so it is a normal pip
+  dependency (`backend/requirements.txt`) — no separate process, no
+  user-installed binary, no redistribution bookkeeping. (2026-09-22: replaced
+  webclaw, an AGPL-3.0 CLI that had to be shelled out to as a separate,
+  never-bundled process specifically to keep that licence boundary intact —
+  primp's MIT licence removes the need for any of that.)
+- The agent index is a client-side filterable list, but Gatsby still statically
+  prerenders the full link list into the served HTML, so slug discovery can
+  regex-match the URL shape directly out of primp's response text. Slugs
+  **must** come from Prydwen — slugifying catalog names fails on about a fifth
+  of the roster (`anby-demara` vs `Anby`, `ukinami-yuzuha` vs `Yuzuha`).
 - Prydwen reuses `.percentage` for two different things: a real score on
   W-Engines (sometimes `.percentage.split`, team and solo figures) and a **bare
   ordinal rank** on many agents' disc-set sections. These are parsed into

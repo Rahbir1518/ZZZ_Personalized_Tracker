@@ -26,7 +26,28 @@ class Cache:
         self._conn = sqlite3.connect(path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         with self._lock:
+            self._migrate()
             self._conn.executescript(_SCHEMA)
+            self._conn.commit()
+
+    def _migrate(self) -> None:
+        """Patch up columns `CREATE TABLE IF NOT EXISTS` can't add to a
+        database that already exists from before that column was introduced.
+
+        Runs before the schema script, since that script's own indexes (e.g.
+        on `sync_run (day, uid)`) assume the column is already there.
+        """
+        tables = {
+            row["name"]
+            for row in self._conn.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            )
+        }
+        if "sync_run" not in tables:
+            return
+        columns = {row["name"] for row in self._conn.execute("PRAGMA table_info(sync_run)")}
+        if "uid" not in columns:
+            self._conn.execute("ALTER TABLE sync_run ADD COLUMN uid TEXT NOT NULL DEFAULT ''")
             self._conn.commit()
 
     # -- generic helpers ---------------------------------------------------- #
@@ -201,15 +222,16 @@ class Cache:
         """Local calendar day, so the quota resets at the user's midnight."""
         return time.strftime("%Y-%m-%d", time.localtime())
 
-    def record_sync_run(self, run_id: str) -> None:
+    def record_sync_run(self, run_id: str, uid: str) -> None:
         self._write(
-            "INSERT OR REPLACE INTO sync_run (run_id, started_at, day) VALUES (?, ?, ?)",
-            (run_id, time.time(), self._today()),
+            "INSERT OR REPLACE INTO sync_run (run_id, uid, started_at, day) VALUES (?, ?, ?, ?)",
+            (run_id, uid, time.time(), self._today()),
         )
 
-    def syncs_today(self) -> int:
+    def syncs_today(self, uid: str) -> int:
         row = self._read_one(
-            "SELECT COUNT(*) AS n FROM sync_run WHERE day = ?", (self._today(),)
+            "SELECT COUNT(*) AS n FROM sync_run WHERE day = ? AND uid = ?",
+            (self._today(), uid),
         )
         return 0 if row is None else int(row["n"])
 

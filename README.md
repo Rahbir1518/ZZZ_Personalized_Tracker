@@ -29,7 +29,7 @@ Scaffolded and wired end to end; milestone 1 is functional. See
 | 2. Roster grid | Built, needs a live account to verify |
 | 3. Character modal | Built, needs a live account to verify |
 | 4. Teams tab | Built, needs a live account to verify |
-| 5. Sync | Built, capped at 5/day |
+| 5. Sync | Built, capped at 10/day per account |
 | 6. QR login | Dropped. `genshin.py`'s QR helper is Chinese-Miyoushe-only, not Global HoYoLAB — cookie paste is the one auth path. |
 
 ---
@@ -66,8 +66,6 @@ the installer, so **users do not need Python installed**.
 
 Requires **Node 20+** and **Python 3.12** (3.11+ is the floor; 3.13/3.14 are
 ahead of what PyInstaller and these libraries are reliably tested against).
-Build recommendations additionally need **webclaw** installed — see
-[Installing webclaw](#installing-webclaw).
 
 ```bash
 npm install
@@ -121,8 +119,9 @@ the agent catalog, and the recommendation guides. It reports per-source
 progress, survives partial failure (one dead source never blanks the UI), and is
 cancellable.
 
-**It is capped at 5 full syncs per day**, resetting at local midnight and
-persisted across restarts. The remaining count sits under the button. This keeps
+**It is capped at 10 full syncs per day, per HoYoLAB account**, resetting at
+local midnight and persisted across restarts. The remaining count sits under
+the button. This keeps
 the app a light, predictable consumer of upstream services — HoYoLAB enforces
 its own per-cookie daily limit, and a cold guide refresh is slow by design at a
 10-second crawl delay.
@@ -171,7 +170,7 @@ Prydwen's ToS grants a limited licence for personal, non-commercial use; a local
 per-user app is within that grant. **Cached content stays on your machine** and
 is gitignored — it is not redistributed.
 
-### Cloudflare, and the webclaw transport
+### Cloudflare, and the primp transport
 
 As of 2026-09-21 prydwen.gg runs an active Cloudflare bot challenge. Plain
 `httpx` gets **403** with `cf-mitigated: challenge` on every path, regardless of
@@ -179,49 +178,23 @@ As of 2026-09-21 prydwen.gg runs an active Cloudflare bot challenge. Plain
 the check is on the TLS/client fingerprint, and it fires on the very first
 request, not after any volume of them.
 
-Fetching therefore goes through [**webclaw**](https://github.com/0xMassi/webclaw),
-which requests using a browser TLS profile and passes. Be clear about what that
-means: **it works by impersonating Chrome**, which circumvents an anti-bot
-control the site owner deliberately enabled. That was a deliberate choice for
-this project, not a default — `HttpxTransport` is still in the tree as the
-honest, non-impersonating option, and the transport is selected in exactly one
-place ([`transport.py`](backend/zzz_sidecar/prydwen/transport.py)).
+Fetching therefore goes through [**primp**](https://github.com/deedy5/primp), a
+Rust-backed HTTP client with Python bindings that requests using a browser TLS
+profile and passes. Be clear about what that means: **it works by impersonating
+Chrome**, which circumvents an anti-bot control the site owner deliberately
+enabled. That was a deliberate choice for this project, not a default —
+`HttpxTransport` is still in the tree as the honest, non-impersonating option,
+and the transport is selected in exactly one place
+([`transport.py`](backend/zzz_sidecar/prydwen/transport.py)).
 
 Rate limiting still applies on top: requests are serialized with the robots.txt
 10-second crawl delay, guides are cached by patch, and full syncs are capped at
-5 per day.
+10 per day, per account.
 
-#### webclaw is not bundled, on purpose
-
-webclaw is **AGPL-3.0**; this project is MIT. Two consequences:
-
-- It is invoked as a **separate process**, never linked as a library, so it does
-  not make this codebase a derivative work.
-- The binary is **not shipped in the installer**. Redistributing an AGPL binary
-  would oblige this project to carry the AGPL licence text and a corresponding
-  source offer. Keeping it a user-installed prerequisite avoids that entirely
-  and keeps this MIT repo clean.
-
-If you ever decide to bundle it, settle those obligations first.
-
-#### Installing webclaw
-
-```bash
-# any one of these
-brew tap 0xMassi/webclaw && brew install webclaw
-cargo install --git https://github.com/0xMassi/webclaw.git --locked webclaw-cli
-# or download a prebuilt binary from the project's GitHub releases
-```
-
-The app looks for it in three places, in order:
-
-1. the `WEBCLAW_BIN` environment variable, pointing at the executable,
-2. anywhere on `PATH`,
-3. `tools/webclaw.exe` in this repo — gitignored, so dropping a copy there is a
-   local convenience and is never committed.
-
-Without it the app still runs; the sync just reports the block and the
-recommendation views stay empty.
+primp is **MIT-licensed**, so — unlike the webclaw CLI this project used until
+2026-09-22 — it is just a normal pip dependency: no separate process, no
+user-installed binary, no licence-boundary bookkeeping. `npm run sidecar:install`
+pulls it in like any other backend requirement.
 
 If you are from Prydwen and would like to discuss this, please open an issue.
 

@@ -56,13 +56,17 @@ CREATE TABLE IF NOT EXISTS sync_log (
 );
 
 -- One row per sync that actually started, so the daily cap survives restarts.
+-- The cap is per account: uid is part of what counts toward it, so switching
+-- HoYoLAB accounts starts that account's own count rather than inheriting
+-- whatever the previous account used today.
 CREATE TABLE IF NOT EXISTS sync_run (
     run_id     TEXT PRIMARY KEY,
+    uid        TEXT NOT NULL DEFAULT '',
     started_at REAL NOT NULL,
     day        TEXT NOT NULL      -- local calendar day, YYYY-MM-DD
 );
 
-CREATE INDEX IF NOT EXISTS idx_sync_run_day ON sync_run (day);
+CREATE INDEX IF NOT EXISTS idx_sync_run_day_uid ON sync_run (day, uid);
 
 -- Game-data lookups behind the drill-down pages: one W-Engine, the disc set
 -- table, one agent's passives. Keyed by kind + key and stamped with the game
