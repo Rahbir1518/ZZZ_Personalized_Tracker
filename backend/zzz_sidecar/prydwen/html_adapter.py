@@ -165,8 +165,8 @@ class HtmlPrydwenSource:
     """``PrydwenSource`` backed by the rendered guide pages."""
 
     def __init__(self, transport: Transport | None = None) -> None:
-        # Defaults to the primp (browser-impersonating) transport. See
-        # transport.py for why that choice exists at all.
+        # Defaults to whichever transport Settings.prydwen_transport names
+        # (primp/browser/httpx) — see transport.py's build_transport().
         self._transport = transport if transport is not None else build_transport()
 
     # -- public API --------------------------------------------------------- #

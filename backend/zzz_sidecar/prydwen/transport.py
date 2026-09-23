@@ -3,7 +3,7 @@
 Separated from parsing on purpose: the parser is stable and tested, while the
 transport is the part that upstream defences keep breaking.
 
-**Why two transports.** As of 2026-09-21 prydwen.gg sits behind a Cloudflare
+**Why three transports.** As of 2026-09-21 prydwen.gg sits behind a Cloudflare
 managed challenge. Plain `httpx` gets HTTP 403 with `cf-mitigated: challenge` on
 every path, on the very first request, regardless of headers or HTTP version —
 the check is on the TLS/client fingerprint, not on request volume.
@@ -11,8 +11,20 @@ the check is on the TLS/client fingerprint, not on request volume.
 `PrimpTransport` fetches through `primp`, which requests using a browser TLS
 profile and therefore passes. Be clear-eyed about what that means: it works by
 *impersonating Chrome*, which is circumventing an anti-bot control the site
-owner deliberately enabled. That was an explicit project decision, not a
-default. `HttpxTransport` is kept as the honest, non-impersonating option.
+owner deliberately enabled. That was an explicit project decision for local,
+personal, low-volume use — not something to hand to every stranger who
+downloads the installer.
+
+`BrowserWindowTransport` is the legitimate alternative shipped in packaged
+builds instead: it asks Electron to fetch through a *real* Chromium
+`BrowserWindow`, so Cloudflare's check is satisfied honestly rather than
+spoofed — automatically for the ordinary invisible JS challenge, or by an
+actual human clicking through if Cloudflare ever serves an interactive one.
+See `frontend/main/browserFetch.ts` for the Electron side and the README's
+"Switching Prydwen transport modes" section for how the two get selected.
+
+`HttpxTransport` is kept as the third, fully honest, non-impersonating option
+— currently Cloudflare-blocked, retained for a host that doesn't challenge.
 
 **Being conservative about what gets requested.** This module is the final
 safety boundary for two separate site rules, enforced regardless of what a
@@ -57,7 +69,7 @@ from urllib.parse import urlsplit
 import httpx
 import primp
 
-from ..config import PRYDWEN_CRAWL_DELAY_SECONDS, USER_AGENT
+from ..config import PRYDWEN_CRAWL_DELAY_SECONDS, USER_AGENT, get_settings
 from .source import PrydwenUnavailable
 
 BASE_URL = "https://www.prydwen.gg"
@@ -68,6 +80,12 @@ PRIMP_IMPERSONATE = "chrome"
 
 #: Per-request ceiling handed to primp, in seconds.
 PRIMP_TIMEOUT = 45.0
+
+#: Per-request ceiling for BrowserWindowTransport, in seconds. Generous
+#: because the request behind it is a real page load plus, in the worst case,
+#: waiting for a human to clear an interactive challenge Electron had to show
+#: them — not a bare HTTP round-trip.
+BROWSER_FETCH_TIMEOUT = 90.0
 
 # -- request-surface allowlist ------------------------------------------------ #
 
@@ -259,15 +277,88 @@ class HttpxTransport:
         await self._client.aclose()
 
 
-def build_transport(preference: str = "auto") -> Transport:
+class BrowserWindowTransport:
+    """Fetch by asking Electron to load the page in a real Chromium
+    `BrowserWindow` and hand back the rendered HTML, instead of spoofing a
+    browser fingerprint from Python.
+
+    This is the legitimate alternative to `PrimpTransport`: a genuine browser
+    clears Cloudflare's challenge the way an ordinary visitor's would —
+    automatically for the invisible JS check, or with an actual human
+    clicking through if Cloudflare ever serves an interactive one. Python has
+    no access to Chromium, so this class does none of that fetching itself;
+    it only talks to the small loopback HTTP endpoint Electron exposes for
+    it (`frontend/main/browserFetch.ts`), authenticated with a bearer token
+    the same way the sidecar's own API authenticates the renderer.
+
+    The crawl-delay gate and the request-surface allowlist stay enforced
+    here, same as every other transport — Electron does the fetching, not
+    the pacing or the "is this URL even ours to request" decision.
+    """
+
+    def __init__(self, origin: str, token: str) -> None:
+        if not origin or not token:
+            raise PrydwenUnavailable(
+                "prydwen_transport is 'browser' but no browser-fetch endpoint was "
+                "configured. Electron must pass --browser-fetch-origin and "
+                "--browser-fetch-token when it spawns the sidecar."
+            )
+        self._client = httpx.AsyncClient(
+            base_url=origin,
+            headers={"X-Browser-Fetch-Token": token},
+            timeout=httpx.Timeout(BROWSER_FETCH_TIMEOUT),
+        )
+
+    async def get_html(self, path: str) -> str:
+        url = f"{BASE_URL}{path}"
+        _validate_prydwen_url(url, context="request")
+
+        async with _GATE:
+            try:
+                response = await self._client.post("/fetch", json={"path": path})
+            except httpx.HTTPError as exc:
+                raise PrydwenUnavailable(
+                    f"Could not reach the Electron browser-fetch endpoint for {path}: {exc}"
+                ) from exc
+
+        if response.status_code != 200:
+            raise PrydwenUnavailable(
+                f"Browser-fetch endpoint returned HTTP {response.status_code} for "
+                f"{path}: {response.text[:200]}"
+            )
+
+        payload = response.json()
+        html = payload.get("html") or ""
+        if not html.strip():
+            raise PrydwenUnavailable(
+                f"Browser-fetch endpoint returned no HTML for {path}: "
+                f"{payload.get('error', '(no error given)')}"
+            )
+        return html
+
+    async def aclose(self) -> None:
+        await self._client.aclose()
+
+
+def build_transport(preference: str | None = None) -> Transport:
     """Pick a transport.
 
-    ``auto`` (the default) and ``primp`` both use the browser-impersonating
-    client — it is a normal pip dependency now, not something that may or may
-    not be installed, so there is nothing left to detect. ``httpx`` is the
-    explicit opt-out into the honest, non-impersonating path, which currently
-    means eating the Cloudflare block.
+    ``preference`` defaults to whatever `Settings.prydwen_transport` was
+    configured with (see `__main__.py`'s `--prydwen-transport`), so the one
+    real construction site — `HtmlPrydwenSource()`, called with no explicit
+    transport — stays a one-line change away from switching modes rather than
+    needing every call site updated.
+
+    - ``primp`` impersonates a browser TLS fingerprint in-process.
+    - ``browser`` asks Electron to fetch through a real `BrowserWindow`.
+    - ``httpx`` is the honest, non-impersonating opt-out, which currently
+      means eating the Cloudflare block.
     """
+    if preference is None:
+        preference = get_settings().prydwen_transport or "primp"
     if preference == "httpx":
         return HttpxTransport()
+    if preference == "browser":
+        settings = get_settings()
+        return BrowserWindowTransport(settings.browser_fetch_origin, settings.browser_fetch_token)
     return PrimpTransport()

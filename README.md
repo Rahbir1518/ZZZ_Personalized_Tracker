@@ -20,17 +20,20 @@ Comic-book styling throughout. Everything runs on your machine.
 
 ## Status
 
-Scaffolded and wired end to end; milestone 1 is functional. See
-[`zzz-tracker-brief.md`](zzz-tracker-brief.md) for the full plan.
+Working end to end against a real HoYoLAB account. See
+[`zzz-tracker-brief.md`](zzz-tracker-brief.md) for the original project brief —
+some of what's below (the Disks tab, Farm Together, the codex pages) came after
+it, so treat the brief as historical context, not a current feature list.
 
-| Milestone | State |
+| Area | State |
 | --- | --- |
-| 1. Auth + roster fetch | Working |
-| 2. Roster grid | Built, needs a live account to verify |
-| 3. Character modal | Built, needs a live account to verify |
-| 4. Teams tab | Built, needs a live account to verify |
-| 5. Sync | Built, capped at 10/day per account |
-| 6. QR login | Dropped. `genshin.py`'s QR helper is Chinese-Miyoushe-only, not Global HoYoLAB — cookie paste is the one auth path. |
+| Auth + roster fetch | Working |
+| Characters tab (roster grid, build-gap modal) | Working, verified against a live account |
+| Teams tab (fieldable / suggested, synergy) | Working, verified against a live account |
+| Disks tab (set catalog, Farm Next, Farm Together) | Working, verified against a live account |
+| Codex (W-Engine / disc set / agent drill-down pages) | Working |
+| Sync | Working, capped at 10 full syncs/day per account |
+| QR login | Dropped. `genshin.py`'s QR helper is Chinese-Miyoushe-only, not Global HoYoLAB — cookie paste is the one auth path. |
 
 ---
 
@@ -38,9 +41,10 @@ Scaffolded and wired end to end; milestone 1 is functional. See
 
 ```
 frontend/          Electron app
-  main/            app lifecycle, spawns + supervises the sidecar, credential storage
+  main/            app lifecycle, spawns + supervises the sidecar, credential storage,
+                    browserFetch.ts (the BrowserWindow transport's Electron half)
   preload/         the narrow contextBridge API the UI is allowed to touch
-  ui/              React + TypeScript renderer
+  ui/              React + TypeScript renderer (Characters / Teams / Disks tabs, codex pages)
 backend/           Python FastAPI sidecar
   zzz_sidecar/
     routers/       the local HTTP API
@@ -138,31 +142,6 @@ game text and keep the part derived from your own roster.
 
 ## About the Prydwen adapter
 
-The brief originally assumed Prydwen was a Gatsby site serving structured JSON
-at `/page-data/<path>/page-data.json`. **That is no longer true.** Verified
-2026-09-21:
-
-| Probe | Result |
-| --- | --- |
-| `/page-data/**/page-data.json` | **410 Gone** (all paths) |
-| `/_next/data/**.json` | 404 — App Router, not Pages Router |
-| RSC flight (`?_rsc=`, `RSC: 1`) | infinite **307** loop |
-| `/api/*` | 404, and `Disallow`ed in robots.txt |
-| `api.prydwen.gg` | does not resolve |
-
-Prydwen has migrated to **Next.js**, and recommendations now exist only in
-server-rendered HTML. The adapter therefore parses HTML — but it is kept honest:
-
-- it sits behind a narrow `PrydwenSource` interface, so swapping in a JSON
-  source later touches exactly one construction site;
-- it targets Prydwen's **semantic, hand-authored class names** (`.zzz-set-min`,
-  `.team-row`, `.single-item`), not hashed CSS-module names, so it survives
-  ordinary rebuilds;
-- **golden-file tests** pin every selector, so a redesign fails loudly in CI
-  instead of silently producing empty recommendations;
-- every field degrades independently — a changed section blanks that one field,
-  not the whole guide.
-
 Being a good citizen: robots.txt sets `Crawl-delay: 10`, so requests are
 **serialized with a 10s gap**, results are cached aggressively in local SQLite
 keyed by patch, and the `User-Agent` identifies this project and links back here.
@@ -170,7 +149,7 @@ Prydwen's ToS grants a limited licence for personal, non-commercial use; a local
 per-user app is within that grant. **Cached content stays on your machine** and
 is gitignored — it is not redistributed.
 
-### Cloudflare, and the primp transport
+### Cloudflare, and how each transport handles it
 
 As of 2026-09-21 prydwen.gg runs an active Cloudflare bot challenge. Plain
 `httpx` gets **403** with `cf-mitigated: challenge` on every path, regardless of
@@ -178,25 +157,75 @@ As of 2026-09-21 prydwen.gg runs an active Cloudflare bot challenge. Plain
 the check is on the TLS/client fingerprint, and it fires on the very first
 request, not after any volume of them.
 
-Fetching therefore goes through [**primp**](https://github.com/deedy5/primp), a
-Rust-backed HTTP client with Python bindings that requests using a browser TLS
-profile and passes. Be clear about what that means: **it works by impersonating
-Chrome**, which circumvents an anti-bot control the site owner deliberately
-enabled. That was a deliberate choice for this project, not a default —
-`HttpxTransport` is still in the tree as the honest, non-impersonating option,
-and the transport is selected in exactly one place
+[**primp**](https://github.com/deedy5/primp) is a Rust-backed HTTP client with
+Python bindings that requests using a browser TLS profile and passes. 
+
+**primp is a local development convenience — it is not what the public
+installer ships with.** It's the default for `npm run dev`, kept because it's a
+fast, in-process HTTP call rather than spinning up a real browser window on
+every guide fetch. The build anyone downloads from GitHub instead uses the
+`browser` transport (a real Electron `BrowserWindow` clearing Cloudflare's
+challenge honestly — see "Switching Prydwen transport modes" below), which is
+the one actually worth trusting at public scale. `HttpxTransport` is a third,
+fully honest option, kept for a host that doesn't challenge at all. All three
+implement the same interface and the choice is made in exactly one place
 ([`transport.py`](backend/zzz_sidecar/prydwen/transport.py)).
 
-Rate limiting still applies on top: requests are serialized with the robots.txt
-10-second crawl delay, guides are cached by patch, and full syncs are capped at
-10 per day, per account.
+Rate limiting applies to every transport, not just primp: requests are
+serialized with the robots.txt 10-second crawl delay, guides are cached by
+patch, and full syncs are capped at 10 per day, per account.
 
 primp is **MIT-licensed**, so — unlike the webclaw CLI this project used until
 2026-09-22 — it is just a normal pip dependency: no separate process, no
 user-installed binary, no licence-boundary bookkeeping. `npm run sidecar:install`
-pulls it in like any other backend requirement.
+pulls it in like any other backend requirement, whether or not a given run
+ever actually uses it.
 
 If you are from Prydwen and would like to discuss this, please open an issue.
+
+### Switching Prydwen transport modes
+
+There are three transports (`backend/zzz_sidecar/prydwen/transport.py`):
+
+| Transport | What it does | Used when |
+| --- | --- | --- |
+| `primp` | Impersonates a Chrome TLS fingerprint, in-process | `npm run dev` / `npm run sidecar:dev` (the default for local iteration) |
+| `browser` | Loads the page in a real Electron `BrowserWindow`, so Cloudflare's challenge is cleared honestly instead of spoofed | Packaged builds (`npm run dist`) — the default for anyone downloading the installer |
+| `httpx` | Plain, honestly-identified HTTP, no impersonation | Opt-in only; currently Cloudflare-blocked |
+
+**Selection is automatic** — `frontend/main/sidecar.ts`'s `resolvePrydwenTransport()` picks `browser` when `app.isPackaged` is true and `primp` otherwise, then passes it to the sidecar as `--prydwen-transport`. Nothing to do at packaging time; `npm run dist` already produces a `browser`-mode build.
+
+**To test the `browser` path locally**, without a full package-and-install cycle, set `ZZZ_PRYDWEN_TRANSPORT` before starting dev mode:
+
+```powershell
+$env:ZZZ_PRYDWEN_TRANSPORT = 'browser'
+npm run dev
+```
+
+This spins up a hidden `BrowserWindow` (`frontend/main/browserFetch.ts`) the first time a guide is fetched. It stays hidden if Cloudflare's ordinary invisible JS challenge clears on its own; if Cloudflare ever serves an interactive one instead, the window is shown so you can click through it, then hides again. A cleared challenge's `cf_clearance` cookie is kept in a persistent session partition (`persist:prydwen-fetch`), so this is normally a one-time thing per machine, not per sync.
+
+**Verified, not just designed this way:** a full 59-guide resync through a packaged build, `browser` transport, cleared Cloudflare's challenge automatically on every single request — the window never had to show itself once.
+
+Unset the variable (or just don't set it) to go back to `primp` for day-to-day dev work — `browser` is slower per-request (a real page load vs. a bare HTTP call) and unnecessary once you've confirmed it works.
+
+`httpx` remains available as an explicit opt-out for either mode via `--prydwen-transport httpx`, kept honest and unused by default.
+
+**Choosing what `npm run dist` bakes into the installer.** `ZZZ_PRYDWEN_TRANSPORT` above is a *runtime* switch — it only ever affects the process it's set for, dev or packaged. What an installer permanently ships with is a separate, **build-time** decision: `ZZZ_DIST_TRANSPORT`, read once while `npm run dist` compiles and compiled into the app as a literal (`electron.vite.config.ts`'s `define`) — not something later readable or overridable from the installed app's environment.
+
+Set it either as a real environment variable, or — easier to not forget about, since a shell variable silently outlives the terminal session and would leak into your *next* build too — as a `.env` file in the repo root (already gitignored):
+
+```powershell
+# Your own build, with primp baked in:
+echo "ZZZ_DIST_TRANSPORT=primp" > .env
+npm run dist
+
+# The public build: delete the file (or just never create it) and rebuild.
+# browser is the default the moment ZZZ_DIST_TRANSPORT isn't set to anything.
+rm .env
+npm run dist
+```
+
+Whichever you have set last (env var takes priority over `.env` if both exist) is what that build gets — there is no runtime toggle in the shipped app itself, so double check which one you intend before publishing an installer.
 
 ---
 

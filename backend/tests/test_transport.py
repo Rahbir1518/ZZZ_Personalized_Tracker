@@ -9,11 +9,14 @@ actually waiting out a 10s delay.
 
 from __future__ import annotations
 
+import httpx
 import primp
 import pytest
 
+from zzz_sidecar.config import configure
 from zzz_sidecar.prydwen.source import PrydwenUnavailable
 from zzz_sidecar.prydwen.transport import (
+    BrowserWindowTransport,
     HttpxTransport,
     PrimpTransport,
     _RateLimited,
@@ -34,6 +37,42 @@ def test_auto_uses_primp():
 
 def test_asking_for_primp_explicitly_also_works():
     assert isinstance(build_transport("primp"), PrimpTransport)
+
+
+def test_explicit_browser_is_honoured(tmp_path):
+    configure(
+        port=8999,
+        token="t",
+        data_dir=tmp_path,
+        prydwen_transport="browser",
+        browser_fetch_origin="http://127.0.0.1:54321",
+        browser_fetch_token="secret",
+    )
+    assert isinstance(build_transport("browser"), BrowserWindowTransport)
+
+
+def test_no_preference_falls_back_to_the_configured_settings(tmp_path):
+    """`HtmlPrydwenSource()`'s real construction site calls `build_transport()`
+    with no argument - this is what makes Electron's --prydwen-transport flag
+    actually take effect without touching that call site."""
+    configure(
+        port=8999,
+        token="t",
+        data_dir=tmp_path,
+        prydwen_transport="browser",
+        browser_fetch_origin="http://127.0.0.1:54321",
+        browser_fetch_token="secret",
+    )
+    assert isinstance(build_transport(), BrowserWindowTransport)
+
+    configure(port=8999, token="t", data_dir=tmp_path)  # back to the default
+    assert isinstance(build_transport(), PrimpTransport)
+
+
+def test_browser_transport_without_a_configured_endpoint_refuses_to_construct(tmp_path):
+    configure(port=8999, token="t", data_dir=tmp_path, prydwen_transport="browser")
+    with pytest.raises(PrydwenUnavailable, match="no browser-fetch endpoint"):
+        build_transport("browser")
 
 
 # -- URL allowlist -------------------------------------------------------------- #
@@ -121,6 +160,41 @@ def _primp_transport_with(fake_client: _FakeAsyncClient) -> PrimpTransport:
 
 def _httpx_transport_with(fake_client: _FakeAsyncClient) -> HttpxTransport:
     transport = HttpxTransport.__new__(HttpxTransport)
+    transport._client = fake_client
+    return transport
+
+
+class _FakePostResponse:
+    def __init__(self, payload: dict | None = None, status_code: int = 200, text: str = "") -> None:
+        self._payload = payload or {}
+        self.status_code = status_code
+        self.text = text or str(self._payload)
+
+    def json(self) -> dict:
+        return self._payload
+
+
+class _FakePostClient:
+    """Stands in for the httpx client BrowserWindowTransport POSTs the
+    fetch request through, so no real Electron endpoint is needed."""
+
+    def __init__(self, response: _FakePostResponse | None = None, error: Exception | None = None):
+        self._response = response
+        self._error = error
+        self.requested_path: str | None = None
+        self.call_count = 0
+
+    async def post(self, url: str, *, json: dict) -> _FakePostResponse:
+        self.requested_path = json.get("path")
+        self.call_count += 1
+        if self._error is not None:
+            raise self._error
+        assert self._response is not None
+        return self._response
+
+
+def _browser_transport_with(fake_client: _FakePostClient) -> BrowserWindowTransport:
+    transport = BrowserWindowTransport.__new__(BrowserWindowTransport)
     transport._client = fake_client
     return transport
 
@@ -216,6 +290,60 @@ async def test_a_primp_error_is_reported_not_crashed():
     transport = _primp_transport_with(fake)
 
     with pytest.raises(PrydwenUnavailable, match="failed"):
+        await transport.get_html("/zenless/characters")
+
+
+# -- BrowserWindowTransport ------------------------------------------------------ #
+
+
+def test_browser_window_transport_refuses_to_construct_without_endpoint_config():
+    with pytest.raises(PrydwenUnavailable, match="no browser-fetch endpoint"):
+        BrowserWindowTransport("", "")
+
+
+async def test_browser_window_transport_posts_the_path_and_returns_the_html():
+    fake = _FakePostClient(_FakePostResponse({"html": "<html>real browser</html>"}))
+    transport = _browser_transport_with(fake)
+
+    html = await transport.get_html("/zenless/characters/miyabi")
+
+    assert html == "<html>real browser</html>"
+    assert fake.requested_path == "/zenless/characters/miyabi"
+
+
+async def test_browser_window_transport_a_disallowed_path_is_refused_before_any_request():
+    fake = _FakePostClient(_FakePostResponse({"html": "should never be seen"}))
+    transport = _browser_transport_with(fake)
+
+    with pytest.raises(PrydwenUnavailable):
+        await transport.get_html("/api/honeypot-trap")
+
+    assert fake.call_count == 0
+
+
+async def test_browser_window_transport_a_non_200_becomes_prydwen_unavailable():
+    fake = _FakePostClient(_FakePostResponse({}, status_code=500, text="server error"))
+    transport = _browser_transport_with(fake)
+
+    with pytest.raises(PrydwenUnavailable, match="HTTP 500"):
+        await transport.get_html("/zenless/characters")
+
+
+async def test_browser_window_transport_reports_electrons_own_error_message():
+    fake = _FakePostClient(
+        _FakePostResponse({"html": "", "error": "Cloudflare challenge was not cleared in time"})
+    )
+    transport = _browser_transport_with(fake)
+
+    with pytest.raises(PrydwenUnavailable, match="Cloudflare challenge was not cleared"):
+        await transport.get_html("/zenless/characters")
+
+
+async def test_browser_window_transport_a_connection_failure_is_reported_not_crashed():
+    fake = _FakePostClient(error=httpx.ConnectError("boom"))
+    transport = _browser_transport_with(fake)
+
+    with pytest.raises(PrydwenUnavailable, match="Could not reach"):
         await transport.get_html("/zenless/characters")
 
 

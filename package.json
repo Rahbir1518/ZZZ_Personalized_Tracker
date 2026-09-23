@@ -15,7 +15,7 @@
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
-    "sidecar:install": "python -m venv backend\\.venv && backend\\.venv\\Scripts\\python -m pip install -r backend\\requirements-dev.txt",
+    "sidecar:install": "py -3.12 -m venv backend\\.venv && backend\\.venv\\Scripts\\python -m pip install -r backend\\requirements-dev.txt",
     "sidecar:dev": "cd backend && .venv\\Scripts\\python -m zzz_sidecar --port 8777 --reload",
     "sidecar:test": "backend\\.venv\\Scripts\\python -m pytest backend\\tests -q",
     "sidecar:build": "powershell -ExecutionPolicy Bypass -File scripts/build-sidecar.ps1",

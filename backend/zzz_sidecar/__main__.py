@@ -32,9 +32,38 @@ def main(argv: list[str] | None = None) -> int:
         help="Where the SQLite cache lives. Electron passes its userData path.",
     )
     parser.add_argument("--reload", action="store_true", help="Dev autoreload.")
+    parser.add_argument(
+        "--prydwen-transport",
+        choices=["primp", "httpx", "browser"],
+        default="primp",
+        help=(
+            "How to fetch Prydwen guide pages. 'primp' impersonates a browser "
+            "TLS fingerprint in-process. 'browser' asks Electron to load the "
+            "page in a real BrowserWindow instead (requires --browser-fetch-* "
+            "below). 'httpx' is the honest, non-impersonating client, "
+            "currently Cloudflare-blocked."
+        ),
+    )
+    parser.add_argument(
+        "--browser-fetch-origin",
+        default="",
+        help="Loopback origin of Electron's browser-fetch endpoint. Required with --prydwen-transport=browser.",
+    )
+    parser.add_argument(
+        "--browser-fetch-token",
+        default="",
+        help="Bearer token for --browser-fetch-origin.",
+    )
     args = parser.parse_args(argv)
 
-    configure(port=args.port, token=args.token, data_dir=args.data_dir)
+    configure(
+        port=args.port,
+        token=args.token,
+        data_dir=args.data_dir,
+        prydwen_transport=args.prydwen_transport,
+        browser_fetch_origin=args.browser_fetch_origin,
+        browser_fetch_token=args.browser_fetch_token,
+    )
 
     uvicorn.run(
         "zzz_sidecar.app:create_app",

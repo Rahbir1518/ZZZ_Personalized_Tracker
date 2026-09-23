@@ -56,6 +56,20 @@ class Settings:
     port: int = 8777
     token: str = ""
     data_dir: Path = field(default_factory=lambda: Path.cwd() / ".local")
+    #: Which `prydwen/transport.py` implementation to fetch guides through.
+    #: "primp" (default) impersonates a browser TLS fingerprint in-process.
+    #: "httpx" is the honest, non-impersonating client (currently Cloudflare-
+    #: blocked). "browser" asks Electron to load the page in a real
+    #: `BrowserWindow` instead — see `browser_fetch_origin`/`_token` below and
+    #: `prydwen/transport.py`'s `BrowserWindowTransport`.
+    prydwen_transport: str = "primp"
+    #: Loopback origin of Electron's browser-fetch endpoint, e.g.
+    #: "http://127.0.0.1:53201". Only meaningful when `prydwen_transport`
+    #: is "browser"; empty otherwise.
+    browser_fetch_origin: str = ""
+    #: Bearer token that endpoint requires, mirroring how the sidecar's own
+    #: API authenticates the renderer.
+    browser_fetch_token: str = ""
 
     @property
     def cache_db_path(self) -> Path:
@@ -76,8 +90,23 @@ def get_settings() -> Settings:
     return _settings
 
 
-def configure(*, port: int, token: str, data_dir: Path) -> Settings:
+def configure(
+    *,
+    port: int,
+    token: str,
+    data_dir: Path,
+    prydwen_transport: str = "primp",
+    browser_fetch_origin: str = "",
+    browser_fetch_token: str = "",
+) -> Settings:
     global _settings
-    _settings = Settings(port=port, token=token, data_dir=data_dir)
+    _settings = Settings(
+        port=port,
+        token=token,
+        data_dir=data_dir,
+        prydwen_transport=prydwen_transport,
+        browser_fetch_origin=browser_fetch_origin,
+        browser_fetch_token=browser_fetch_token,
+    )
     _settings.ensure_dirs()
     return _settings
