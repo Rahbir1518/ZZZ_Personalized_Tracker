@@ -15,6 +15,7 @@ import type {
   ApiErrorCode,
   AuthResult,
   DiscSetDetail,
+  DiscSetOverview,
   EngineDetail,
   SyncStatus
 } from './types'
@@ -103,6 +104,11 @@ export const api = {
 
   discSet: (name: string): Promise<DiscSetDetail> =>
     request(`/disc-sets?name=${encodeURIComponent(name)}`),
+
+  /** Every set the catalog knows, each with a short ranked "who it's for"
+   *  preview — the Disks tab's grid, and also the farming-goal picker's
+   *  autocomplete source (it wants the same name+icon pairs). */
+  discSetsOverview: (): Promise<DiscSetOverview[]> => request('/disc-sets/overview'),
 
   /** One entry per name, in the order given, so a team reads left to right. */
   synergy: (names: string[]): Promise<AgentSynergy[]> =>

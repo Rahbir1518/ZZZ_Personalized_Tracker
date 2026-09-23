@@ -82,13 +82,47 @@ def test_engine_note_comes_from_the_following_sibling(guide):
 
 
 def test_substat_priority_is_split_and_ordered(guide):
+    # Bare names now — the stated cap moved to substat_targets, so it is not
+    # duplicated (and differently formatted) in two fields.
     assert guide.substat_priority == [
-        "CRIT RATE (Until 80%)",
+        "CRIT RATE",
         "CRIT DMG",
         "ATK%",
         "Anomaly Proficiency",
         "PEN",
     ]
+
+
+def test_substat_targets_splits_the_stated_cap_from_the_name(guide):
+    targets = {t.name: t.target for t in guide.substat_targets}
+    assert targets["CRIT RATE"] == "Until 80%"
+    # The rest of the order has no stated cap — chase as much as the build
+    # allows, not a specific number.
+    assert targets["CRIT DMG"] == ""
+    assert targets["ATK%"] == ""
+
+
+def test_substat_targets_is_the_same_order_as_substat_priority(guide):
+    assert [t.name for t in guide.substat_targets] == guide.substat_priority
+
+
+def test_endgame_stats_split_label_from_value(guide):
+    stats = {s.stat: s.value for s in guide.endgame_stats}
+    assert stats["ATK"] == "2500 - 3600+ (Depending on Disc Drive main stat choice)"
+    assert stats["CRIT RATE"] == "75-95%"
+    assert stats["CRIT DMG"] == "150-190%"
+
+
+def test_skill_priority_is_ordered_and_skips_the_chevron_separators(guide):
+    # Both the desktop and mobile chevron each have their own <div> between
+    # skills — a naive "every child" read would double them up as phantom
+    # skill entries.
+    assert [s.skill for s in guide.skill_priority] == [
+        "Chain Attack",
+        "Special Attack",
+        "Basic Attack",
+    ]
+    assert guide.skill_priority[0].icon.endswith("icon_ulti_full.webp")
 
 
 def test_main_stats_keyed_by_disc_slot(guide):

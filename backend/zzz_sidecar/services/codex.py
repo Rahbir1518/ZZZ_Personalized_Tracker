@@ -148,6 +148,15 @@ class CodexService:
 
         return self._engine_from_raw(detail.name, raw, entry)
 
+    async def all_disc_set_names(self) -> list[str]:
+        """Every Drive Disc set name the game catalog knows, for the goal
+        picker's autocomplete — a person's farming target does not have to be
+        one Prydwen recommends, so the whole catalog is offered, not just the
+        sets that show up in some guide."""
+        table = await self._disc_set_table()
+        names = [str(entry.get("name", "")) for entry in table.values()]
+        return sorted({n for n in names if n})
+
     async def disc_set(self, set_name: str) -> DiscSetDetail:
         """A Drive Disc set's 2-piece and 4-piece bonuses."""
         detail = DiscSetDetail(set_name=set_name.strip())

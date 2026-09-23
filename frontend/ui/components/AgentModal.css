@@ -161,6 +161,79 @@
   margin-top: 4px;
 }
 
+/* Prydwen's "Best Endgame Stats (Level 60)" box — the target for a finished
+   build, as opposed to dt-substats' per-piece priority order. Two columns
+   of label/value pairs rather than a list, since these are short and there
+   can be up to seven of them. */
+.dt-endgame {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dt-endgame li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  border-top: var(--hair) solid var(--ink-200);
+}
+
+.dt-endgame-stat {
+  font-family: var(--font-tech);
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.dt-endgame-value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--gold);
+  text-align: right;
+}
+
+/* Skill priority: a wrapping chain, icon > name > icon > name, matching
+   Prydwen's own chevron-chain layout rather than a plain numbered list. */
+.dt-skills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dt-skill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dt-skill-name {
+  font-family: var(--font-tech);
+  font-weight: 700;
+  font-size: 0.76rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--paper);
+}
+
+.dt-skill-arrow {
+  margin-left: 2px;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--gold);
+}
+
 .dt-empty {
   margin: 0;
   font-size: 0.85rem;
@@ -263,6 +336,39 @@
   color: var(--paper);
 }
 
+.dt-substats {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dt-substat-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 0;
+}
+
+.dt-substat-row + .dt-substat-row {
+  border-top: var(--hair) solid var(--ink-200);
+}
+
+.dt-substat-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+  color: var(--paper);
+}
+
+/* The stated cap, e.g. "Until 80%" — the whole point of this row over the
+   plain priority order. Gold, so a capped stat visibly differs from one
+   that's open-ended ("chase as much as you can"). */
+.dt-substat-target {
+  margin-left: auto;
+  color: var(--gold);
+}
+
 .dt-mains li {
   display: flex;
   align-items: center;
@@ -285,6 +391,24 @@
 
 .dt-note.is-warn {
   color: var(--gold);
+}
+
+.dt-note.is-goal {
+  margin: 0 0 14px;
+  padding: 8px 10px;
+  background: var(--ink-200);
+  border-left: 3px solid var(--gold);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--paper-dim);
+}
+
+.dt-goal-stats {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 2px;
 }
 
 .dt-callouts {

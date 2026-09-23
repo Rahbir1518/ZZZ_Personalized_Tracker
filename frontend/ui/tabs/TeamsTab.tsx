@@ -1,23 +1,32 @@
 /**
  * Teams tab, with two sub-tabs:
  *
- *  - Suggested  — comps you are missing pieces of, nearest-first, plus the
- *                 farming priorities derived from the same join.
+ *  - Suggested  — comps you are missing pieces of, nearest-first.
  *  - My Teams   — recommended comps every member of which you own.
  *
  * Suggested leads and opens by default: it is the one that tells you what to
  * do next. My Teams is a record of what you have already finished, and for a
  * roster with no complete comps yet it is empty.
+ *
+ * Farm Next used to live in this tab; it moved to Disks (see App.tsx), which
+ * answers the matching question from the other direction — this tab is about
+ * comps, that one is about sets.
  */
 
 import { useMemo, useRef, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
-import { Chip, EmptyState, ItemIcon, Meter, Panel, Tech } from '../components/Ui'
+import { Chip, EmptyState, Meter, Panel, Tech } from '../components/Ui'
 import { TeamModal } from '../components/TeamModal'
 import { TeamSynergy } from '../components/TeamSynergy'
 import { AgentSearch, type Suggestion } from '../components/AgentSearch'
-import type { Agent, Analysis, FarmingPriority, TeamMember, TeamStatus } from '../types'
+import { sortPinnedFirst, usePinnedTeams } from '../hooks/usePinnedTeams'
+import type { Agent, Analysis, TeamMember, TeamStatus } from '../types'
 import './TeamsTab.css'
+
+/** The key a team is pinned/keyed under everywhere in this tab. */
+function teamKey(team: TeamStatus): string {
+  return team.team.agent_names.join('|')
+}
 
 type SubTab = 'mine' | 'suggested'
 
@@ -26,6 +35,9 @@ interface Props {
   /** Roster, so a team member's name can be resolved to an agent id. */
   agents: Agent[]
   loading: boolean
+  /** A disc-set click inside the team modal goes here instead of opening
+   *  in place — see DisksTab.tsx. */
+  onNavigateToSet: (name: string) => void
 }
 
 /** Match a team on any member's name. */
@@ -34,26 +46,29 @@ function matchesQuery(team: TeamStatus, needle: string): boolean {
   return team.team.agent_names.some((name) => name.toLowerCase().includes(needle))
 }
 
-export function TeamsTab({ analysis, agents, loading }: Props): React.JSX.Element {
+export function TeamsTab({
+  analysis,
+  agents,
+  loading,
+  onNavigateToSet
+}: Props): React.JSX.Element {
   const [sub, setSub] = useState<SubTab>('suggested')
-  // The farming list is long and sits above the suggested teams, so it is
-  // worth being able to fold it away and get straight to the comps.
-  const [farmOpen, setFarmOpen] = useState(true)
   const [query, setQuery] = useState('')
   const [opened, setOpened] = useState<{ team: TeamStatus; origin: DOMRect } | null>(null)
+  const pins = usePinnedTeams()
 
   const allMine = analysis?.my_teams ?? []
   const allSuggested = analysis?.suggested_teams ?? []
-  const farming = analysis?.farming ?? []
 
   const needle = query.trim().toLowerCase()
   const mine = useMemo(
-    () => allMine.filter((team) => matchesQuery(team, needle)),
-    [allMine, needle]
+    () => sortPinnedFirst(allMine.filter((team) => matchesQuery(team, needle)), teamKey, pins),
+    [allMine, needle, pins]
   )
   const suggested = useMemo(
-    () => allSuggested.filter((team) => matchesQuery(team, needle)),
-    [allSuggested, needle]
+    () =>
+      sortPinnedFirst(allSuggested.filter((team) => matchesQuery(team, needle)), teamKey, pins),
+    [allSuggested, needle, pins]
   )
 
   const filtering = needle !== ''
@@ -206,8 +221,10 @@ export function TeamsTab({ analysis, agents, loading }: Props): React.JSX.Elemen
             <div className="teams-grid" ref={gridRef}>
               {mine.map((team) => (
                 <TeamCard
-                  key={team.team.agent_names.join('|')}
+                  key={teamKey(team)}
                   team={team}
+                  pinned={pins.isPinned(teamKey(team))}
+                  onTogglePin={() => pins.toggle(teamKey(team))}
                   onOpen={(t, origin) => setOpened({ team: t, origin })}
                 />
               ))}
@@ -215,41 +232,6 @@ export function TeamsTab({ analysis, agents, loading }: Props): React.JSX.Elemen
           )
         ) : (
           <div className="teams-suggested">
-            {farming.length > 0 && (
-              <Panel className={`teams-farming ${farmOpen ? '' : 'is-collapsed'}`} tick>
-                {/* Heading wrapping a button: the accordion pattern, so the
-                    section keeps its place in the document outline while the
-                    whole header stays clickable. */}
-                <h3 className="teams-farming-head">
-                  <button
-                    type="button"
-                    className="teams-farming-toggle"
-                    onClick={() => setFarmOpen((open) => !open)}
-                    aria-expanded={farmOpen}
-                    aria-controls="farm-list"
-                  >
-                    <span className="display teams-farming-title">Farm next</span>
-                    {!farmOpen && (
-                      <Tech className="teams-farming-count">
-                        {farming.length} target{farming.length === 1 ? '' : 's'}
-                      </Tech>
-                    )}
-                    <span className="teams-farming-chevron" aria-hidden="true">
-                      ›
-                    </span>
-                  </button>
-                </h3>
-
-                {farmOpen && (
-                  <ol className="farm-list" id="farm-list">
-                    {farming.map((priority) => (
-                      <FarmRow key={priority.label} priority={priority} />
-                    ))}
-                  </ol>
-                )}
-              </Panel>
-            )}
-
             {suggested.length === 0 ? (
               <EmptyState
                 title={
@@ -264,8 +246,10 @@ export function TeamsTab({ analysis, agents, loading }: Props): React.JSX.Elemen
               <div className="teams-grid" ref={gridRef}>
                 {suggested.map((team) => (
                   <TeamCard
-                    key={team.team.agent_names.join('|')}
+                    key={teamKey(team)}
                     team={team}
+                    pinned={pins.isPinned(teamKey(team))}
+                    onTogglePin={() => pins.toggle(teamKey(team))}
                     onOpen={(t, origin) => setOpened({ team: t, origin })}
                   />
                 ))}
@@ -282,6 +266,7 @@ export function TeamsTab({ analysis, agents, loading }: Props): React.JSX.Elemen
             agents={agents}
             origin={opened.origin}
             onClose={() => setOpened(null)}
+            onNavigateToSet={onNavigateToSet}
           />
         )}
       </AnimatePresence>
@@ -289,43 +274,15 @@ export function TeamsTab({ analysis, agents, loading }: Props): React.JSX.Elemen
   )
 }
 
-/** One farming target: the set (or agent) art, then who it serves. */
-function FarmRow({ priority }: { priority: FarmingPriority }): React.JSX.Element {
-  return (
-    <li className="farm-row">
-      <ItemIcon src={priority.icon} size={58} />
-
-      <div className="farm-text">
-        <strong>{priority.label}</strong>
-        <span className="farm-reason">{priority.reason}</span>
-
-        {priority.agents.length > 0 && (
-          <ul className="farm-users">
-            {priority.agents.map((user) => (
-              <li
-                key={user.name}
-                className={`farm-user ${user.owned ? 'is-owned' : 'is-missing'}`}
-                title={user.owned ? user.name : `${user.name} — not owned`}
-              >
-                {user.icon !== '' ? (
-                  <img src={user.icon} alt={user.name} loading="lazy" draggable={false} />
-                ) : (
-                  <span className="farm-user-blank">{user.name.slice(0, 2)}</span>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </li>
-  )
-}
-
 function TeamCard({
   team,
+  pinned,
+  onTogglePin,
   onOpen
 }: {
   team: TeamStatus
+  pinned: boolean
+  onTogglePin: () => void
   onOpen: (team: TeamStatus, origin: DOMRect) => void
 }): React.JSX.Element {
   const missing = team.missing_members.length
@@ -339,7 +296,7 @@ function TeamCard({
       : team.team.agent_names.map((name) => ({ name, icon: '', card_icon: '', slug: '' }))
 
   return (
-    <Panel className="team-card">
+    <Panel className={`team-card ${pinned ? 'is-pinned' : ''}`}>
       <button
         type="button"
         className="team-card-hit"
@@ -351,6 +308,7 @@ function TeamCard({
       <header className="team-card-head">
         <h3 className="display team-card-title">{team.team.agent_names.join('  ·  ')}</h3>
         <TeamSynergy team={team} />
+        <PinButton pinned={pinned} onToggle={onTogglePin} />
         {team.fieldable ? (
           <Chip tone="good">Ready</Chip>
         ) : (
@@ -396,5 +354,45 @@ function TeamCard({
         <p className="team-card-hint">One agent away — {team.missing_members[0]} unlocks this comp.</p>
       )}
     </Panel>
+  )
+}
+
+/**
+ * Pinned teams sort to the top of their list (see `sortPinnedFirst`). A
+ * filled vs. outline pin is the whole affordance — no extra label needed
+ * once you've clicked it once and seen the card jump to the top.
+ */
+function PinButton({ pinned, onToggle }: { pinned: boolean; onToggle: () => void }): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      className={`team-pin ${pinned ? 'is-pinned' : ''}`}
+      aria-pressed={pinned}
+      aria-label={pinned ? 'Unpin this team' : 'Pin this team to the top'}
+      title={pinned ? 'Unpin' : 'Pin to top'}
+      onClick={(event) => {
+        // The card behind is one big click target; this button is not it.
+        event.stopPropagation()
+        onToggle()
+      }}
+    >
+      {/* A standard tilted pushpin (Feather icons' `pin`), not a hand-guessed
+          shape — recognizable as "pin this" at a glance, which the previous
+          ad-hoc star/badge outline wasn't. */}
+      <svg
+        viewBox="0 0 24 24"
+        width="14"
+        height="14"
+        fill={pinned ? 'currentColor' : 'none'}
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M12 17v5" />
+        <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+      </svg>
+    </button>
   )
 }

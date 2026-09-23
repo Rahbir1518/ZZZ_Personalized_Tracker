@@ -1,6 +1,7 @@
 /**
- * Manual cookie paste (milestone 1). QR login lands later and will sit
- * alongside this, not replace it — pasted cookies stay as the fallback.
+ * Manual cookie paste — the one sign-in path. A QR flow was scaffolded and
+ * removed: the QR helper `genshin.py` ships is Chinese-Miyoushe-only, not
+ * Global HoYoLAB, which is what this app authenticates against.
  *
  * Cookies go straight to the main process, which encrypts them with the OS
  * keystore (safeStorage / DPAPI). They are never logged and never leave the
@@ -34,7 +35,12 @@ export function LoginPanel({ onAuthenticated }: Props): React.JSX.Element {
 
     try {
       await api.login(cookies)
+      // Unchecked has to actively clear, not just skip saving — otherwise a
+      // credential saved on an earlier, checked login would silently keep
+      // signing the person in on every relaunch even after they unchecked
+      // the box this time.
       if (remember) await window.tracker.credentials.save(cookies)
+      else await window.tracker.credentials.clear()
       onAuthenticated()
     } catch (err) {
       setError(err instanceof ApiError ? err : new ApiError('UNKNOWN', String(err)))

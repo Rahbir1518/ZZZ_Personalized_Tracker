@@ -41,7 +41,10 @@ from ..config import GUIDE_SCHEMA_VERSION
 from ..models import (
     AgentGuide,
     DiscSetRecommendation,
+    EndgameStat,
     EngineRecommendation,
+    SkillStep,
+    SubstatTarget,
     TeamMember,
     TeamRecommendation,
 )
@@ -57,6 +60,10 @@ _SUPERIMPOSE_RE = re.compile(r"\(?\s*S\s*(\d)\s*\)?", re.IGNORECASE)
 
 #: Splits a priority line on its ">" / ">=" / "=" separators.
 _PRIORITY_SPLIT_RE = re.compile(r"\s*(?:>=|=>|>|=)\s*")
+
+#: "(Until 80%)" -> "Until 80%". Only some substats in the priority order
+#: carry a stated cap; the rest have no parenthetical at all.
+_SUBSTAT_TARGET_RE = re.compile(r"\(([^)]+)\)")
 
 #: An agent guide URL, in either an HTML href or a markdown link.
 _SLUG_RE = re.compile(r"/zenless/characters/([a-z0-9][a-z0-9-]*)")
@@ -232,7 +239,10 @@ class HtmlPrydwenSource:
             disc_sets=disc_sets,
             engines=engines,
             substat_priority=self._parse_substat_priority(tree),
+            substat_targets=self._parse_substat_targets(tree),
             main_stats=self._parse_main_stats(tree),
+            endgame_stats=self._parse_endgame_stats(tree),
+            skill_priority=self._parse_skill_priority(tree),
             teams=teams,
             # patch is stamped by the sync service from the metadata source;
             # Prydwen does not state it in a machine-readable way.
@@ -346,16 +356,39 @@ class HtmlPrydwenSource:
             )
         return out
 
-    def _parse_substat_priority(self, tree: HTMLParser) -> list[str]:
+    def _split_substats(self, tree: HTMLParser) -> list[tuple[str, str]]:
         """From ``.box.sub-stats``:
-        "Substats: CRIT RATE (Until 80%) >= CRIT DMG = ATK% > Anomaly Proficiency"."""
+        "Substats: CRIT RATE (Until 80%) >= CRIT DMG = ATK% > Anomaly Proficiency".
+
+        Returns ``(name, target)`` pairs in priority order — ``target`` is the
+        text inside a stated cap like "(Until 80%)", or "" for a stat Prydwen
+        does not cap (chase as much of it as the build allows). Shared by
+        ``substat_priority`` (names only, unchanged shape) and
+        ``substat_targets`` (the same order with the cap split out) so the
+        two can never disagree about the order or what counts as one entry.
+        """
         raw = _text(tree.css_first(".box.sub-stats"))
         if not raw:
             return []
         # Drop the "Substats:" label before splitting.
         _, _, tail = raw.partition(":")
         parts = [p.strip() for p in _PRIORITY_SPLIT_RE.split(tail or raw) if p.strip()]
-        return parts[:10]
+
+        pairs: list[tuple[str, str]] = []
+        for part in parts[:10]:
+            match = _SUBSTAT_TARGET_RE.search(part)
+            if match is None:
+                pairs.append((part, ""))
+            else:
+                name = (part[: match.start()] + part[match.end() :]).strip()
+                pairs.append((name, match.group(1).strip()))
+        return pairs
+
+    def _parse_substat_priority(self, tree: HTMLParser) -> list[str]:
+        return [name for name, _ in self._split_substats(tree)]
+
+    def _parse_substat_targets(self, tree: HTMLParser) -> list[SubstatTarget]:
+        return [SubstatTarget(name=name, target=target) for name, target in self._split_substats(tree)]
 
     def _parse_main_stats(self, tree: HTMLParser) -> dict[str, list[str]]:
         """Per-slot main stats from ``.main-stats .box``, keyed by slot number.
@@ -374,6 +407,53 @@ class HtmlPrydwenSource:
             values = [v for v in values if v]
             if values:
                 out[slot.group(1)] = values
+        return out
+
+    def _parse_endgame_stats(self, tree: HTMLParser) -> list[EndgameStat]:
+        """Prydwen's "Best Endgame Stats (Level 60)" box:
+
+            <div class="endgame-stats"><div class="box raw"><ul>
+              <li><p>ATK:<b> 2500 - 3600+ </b>(Depending on ...)</p></li>
+              <li><p>CRIT RATE: <b>75-95%</b></p></li>
+            </ul></div></div>
+
+        Each ``<li>`` is "Label: value", split on the first colon. A handful
+        of agent pages carry this as an embedded screenshot instead of text —
+        those simply produce nothing here, same as any other section a page
+        doesn't have in machine-readable form.
+        """
+        out: list[EndgameStat] = []
+        for item in tree.css(".endgame-stats li"):
+            raw = _text(item)
+            if not raw or ":" not in raw:
+                continue
+            stat, _, value = raw.partition(":")
+            stat, value = stat.strip(), value.strip()
+            if stat and value:
+                out.append(EndgameStat(stat=stat, value=value))
+        return out
+
+    def _parse_skill_priority(self, tree: HTMLParser) -> list[SkillStep]:
+        """The "Skill Priority" chain:
+
+            <div class="skill-priority Ice">
+              <div class="skill"><img alt="Basic Attack" src="..."><p>Basic Attack</p></div>
+              <div class="order desktop">...chevron svg...</div>
+              <div class="skill">...</div>
+              ...
+            </div>
+
+        Only ``.skill`` blocks are read; the ``.order`` blocks between them are
+        the chevron separators (one for desktop, one for mobile — both must be
+        skipped or the chevron doubles up as a phantom skill).
+        """
+        out: list[SkillStep] = []
+        for block in tree.css(".skill-priority .skill"):
+            name, icon = _img_name_and_icon(block)
+            if not name:
+                name = _text(block.css_first("p"))
+            if name:
+                out.append(SkillStep(skill=name, icon=icon))
         return out
 
     def _parse_teams(self, tree: HTMLParser) -> list[TeamRecommendation]:

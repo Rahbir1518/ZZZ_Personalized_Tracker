@@ -87,6 +87,48 @@
   gap: 8px;
 }
 
+/* Pinned teams get a gold edge, matching the "active" tick treatment used
+   elsewhere (panel-tick), so the card reads as pinned even before you notice
+   its position at the top of the grid. */
+.team-card.is-pinned {
+  border-color: var(--gold);
+}
+
+.team-pin {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  color: var(--muted);
+  background: var(--ink-200);
+  border: var(--hair) solid var(--ink-400);
+  cursor: none;
+  --cursor-role: clickable;
+  transition:
+    color 120ms ease,
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+.team-pin:hover {
+  color: var(--paper);
+  border-color: var(--muted);
+}
+
+.team-pin.is-pinned {
+  color: var(--ink-000);
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.team-pin.is-pinned:hover {
+  color: var(--ink-000);
+  background: var(--gold-deep);
+}
+
 .team-card-title {
   flex: 1;
   margin: 0;
@@ -195,202 +237,9 @@
   color: var(--paper-dim);
 }
 
-/* --- farming panel ------------------------------------------------------ */
+/* --- suggested-teams wrapper --------------------------------------------- */
 
 .teams-suggested {
   display: grid;
   gap: 14px;
-}
-
-.teams-farming {
-  --cut: 14px;
-}
-
-/* Collapsed, the panel is just its own header. */
-.teams-farming.is-collapsed {
-  padding-bottom: 0;
-}
-
-.teams-farming-head {
-  margin: 0 0 10px;
-}
-
-.teams-farming.is-collapsed .teams-farming-head {
-  margin-bottom: 0;
-}
-
-/**
- * The whole header is the toggle, not just the chevron: a 26px target at the
- * far end of a full-width heading is needlessly fiddly when the row beside it
- * is dead space anyway.
- */
-.teams-farming-toggle {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 0;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-  background: none;
-  border: 0;
-  cursor: none;
-  --cursor-role: clickable;
-}
-
-.teams-farming-toggle:focus-visible {
-  outline: var(--edge) solid var(--gold);
-  outline-offset: 3px;
-}
-
-.teams-farming-title {
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 1.2rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--gold);
-}
-
-/* What you are folding away, so the collapsed panel still says something. */
-.teams-farming-count {
-  color: var(--muted);
-}
-
-/**
- * The same › the navigation rail uses, turned a quarter turn. Reusing a
- * glyph the app already ships avoids a caret that renders as a box wherever
- * the font happens not to carry one.
- */
-.teams-farming-chevron {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  margin-left: auto;
-  font-family: var(--font-display);
-  font-size: 1.4rem;
-  line-height: 1;
-  color: var(--muted);
-  background: var(--ink-200);
-  border: var(--hair) solid var(--ink-400);
-  /* Collapsed: points down, "there is more below". */
-  transform: rotate(90deg);
-  transition:
-    transform 160ms ease,
-    color 120ms ease,
-    border-color 120ms ease;
-}
-
-.teams-farming-toggle:hover .teams-farming-chevron {
-  color: var(--gold);
-  border-color: var(--gold);
-}
-
-/* Open: points up, "fold this away". */
-.teams-farming-toggle[aria-expanded='true'] .teams-farming-chevron {
-  transform: rotate(-90deg);
-}
-
-/* --- farm rows ---------------------------------------------------------- */
-
-.farm-list {
-  display: grid;
-  gap: 2px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  counter-reset: farm;
-}
-
-.farm-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  padding: 11px 0;
-}
-
-.farm-row + .farm-row {
-  border-top: var(--hair) solid var(--ink-200);
-}
-
-.farm-text {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-.farm-text strong {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 1.16rem;
-  letter-spacing: 0.03em;
-  color: var(--paper);
-}
-
-.farm-reason {
-  font-family: var(--font-tech);
-  font-size: 0.76rem;
-  letter-spacing: 0.06em;
-  color: var(--muted);
-}
-
-/* Who the target serves. Un-owned agents are shown dimmed rather than hidden:
-   that is what makes a set read as worth farming toward. */
-.farm-users {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 7px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* Big enough to recognise a face at a glance - the row is answering "who is
-   this for?", and 30px squares of dimmed art answered it badly. */
-.farm-user {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  overflow: hidden;
-  background: var(--ink-300);
-  border: var(--hair) solid var(--ink-400);
-  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
-}
-
-.farm-user img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.farm-user-blank {
-  font-family: var(--font-display);
-  font-size: 0.9rem;
-  color: var(--muted);
-}
-
-.farm-user.is-owned {
-  border-color: var(--gold);
-}
-
-.farm-user.is-owned::after {
-  /* A gold corner tick, so ownership survives being seen out of the corner of
-     the eye rather than depending on a 1px border colour. Top-right, because
-     the frame's cut corners are top-left and bottom-right. */
-  content: '';
-  position: absolute;
-  inset: 0 0 auto auto;
-  width: 0;
-  height: 0;
-  border-right: 9px solid var(--gold);
-  border-bottom: 9px solid transparent;
-}
-
-.farm-user.is-missing img {
-  filter: grayscale(1) brightness(0.4);
 }

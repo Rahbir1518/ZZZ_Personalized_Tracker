@@ -20,7 +20,11 @@ PRYDWEN_CRAWL_DELAY_SECONDS = 10.0
 #: the patch has not changed, only our parser has.
 #:
 #: 2 - team member portraits; rating/rank split on disc sets.
-GUIDE_SCHEMA_VERSION = 2
+#: 3 - substat_targets, the stated cap (e.g. "Until 80%") split out of the
+#:     substat priority order into its own field.
+#: 4 - endgame_stats, Prydwen's "Best Endgame Stats (Level 60)" box.
+#: 5 - skill_priority, the levelling-order chain of skill icons.
+GUIDE_SCHEMA_VERSION = 5
 
 #: Prydwen guides are re-fetched only when the cached game patch differs, or
 #: when the entry is older than this regardless of patch.

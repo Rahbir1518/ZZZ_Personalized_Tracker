@@ -187,9 +187,13 @@ class SyncService:
             return self._agents_from_cache()
 
     def _agents_from_cache(self) -> list[Agent]:
-        # Do not skip the lookup when the UID is empty: the cache falls back to
-        # the single stored roster, and gating here is what made a restart show
-        # an empty grid until the user synced again.
+        # Do not skip the lookup when the UID is empty: at process startup,
+        # before the saved-cookie auto-login has resolved, the cache falls
+        # back to the most recently stored roster for exactly this call, and
+        # gating here is what made a restart show an empty grid until the
+        # user synced again. Once the UID is known (a real login happened
+        # this session), a miss stays a miss — see get_roster's own
+        # docstring for why that matters once two accounts are involved.
         cached = self._cache.get_roster(self._hoyolab.uid)
         if cached is None:
             return [a for a in self._agents if a.owned]
@@ -413,3 +417,20 @@ class SyncService:
             for agent_id, payload in self._cache.get_builds(self._hoyolab.uid).items()
         }
         self._recompute()
+
+    def clear(self) -> None:
+        """Drop the in-memory roster/build/analysis view.
+
+        Called on logout, so a person signing back in as someone else sees
+        nothing rather than the outgoing account's data for the moment
+        between the login call and the next sync. `get_roster`/`get_builds`
+        (see cache/db.py) also refuse to leak one account's on-disk cache
+        into another's login now, so the next login's own `load_from_cache`
+        stays empty too, until a real sync populates that account's own
+        cache — this call is what keeps the screen honestly empty for the
+        few hundred milliseconds before that happens, rather than showing
+        the outgoing account's data one paint longer than it has to.
+        """
+        self._agents = []
+        self._builds = {}
+        self._analysis = Analysis()

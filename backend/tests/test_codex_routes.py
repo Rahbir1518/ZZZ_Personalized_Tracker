@@ -73,10 +73,14 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     async def _no_synergy(agent_id: int) -> AgentSynergy:
         return AgentSynergy(agent_name="")
 
+    async def _set_names() -> list[str]:
+        return ["Woodpecker Electro", "Freedom Blues", "Puffer Electro"]
+
     class _StubCodex:
         engine = staticmethod(_no_engine)
         disc_set = staticmethod(_no_set)
         synergy = staticmethod(_no_synergy)
+        all_disc_set_names = staticmethod(_set_names)
 
     monkeypatch.setattr("zzz_sidecar.routers.codex.get_codex", lambda: _StubCodex())
 
@@ -222,3 +226,31 @@ def test_synergy_keeps_a_slot_for_an_agent_not_in_the_catalog(client: TestClient
 
 def test_synergy_with_no_names_is_an_empty_list(client: TestClient) -> None:
     assert client.get("/synergy", headers=HEADERS).json() == []
+
+
+# -- disc set overview -------------------------------------------------------- #
+
+
+def test_overview_lists_every_known_set_even_with_no_recommendations(client: TestClient) -> None:
+    body = client.get("/disc-sets/overview", headers=HEADERS).json()
+    names = {row["set_name"] for row in body}
+
+    assert names == {"Woodpecker Electro", "Freedom Blues", "Puffer Electro"}
+
+
+def test_overview_ranks_the_users_of_a_recommended_set(client: TestClient) -> None:
+    body = client.get("/disc-sets/overview", headers=HEADERS).json()
+    woodpecker = next(row for row in body if row["set_name"] == "Woodpecker Electro")
+
+    # Miyabi's guide recommends it at 4-PC, rank 1 — the only recommendation
+    # in this fixture, so she is the sole entry.
+    assert [u["agent_name"] for u in woodpecker["top_users"]] == ["Miyabi"]
+    assert woodpecker["top_users"][0]["rank"] == 1
+    assert woodpecker["top_users"][0]["pieces"] == 4
+
+
+def test_overview_set_with_no_recommendation_has_no_users(client: TestClient) -> None:
+    body = client.get("/disc-sets/overview", headers=HEADERS).json()
+    puffer = next(row for row in body if row["set_name"] == "Puffer Electro")
+
+    assert puffer["top_users"] == []

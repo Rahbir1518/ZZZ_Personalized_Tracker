@@ -1,0 +1,71 @@
+.settings-ov {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+}
+
+.settings-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 3, 4, 0.82);
+  backdrop-filter: blur(3px);
+}
+
+.settings-wrap {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  pointer-events: none;
+}
+
+.settings-wrap > * {
+  pointer-events: auto;
+}
+
+.settings-panel {
+  position: relative;
+  width: min(360px, 100%);
+  padding: 26px 24px 22px;
+  --cut: 16px;
+}
+
+.settings-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  font-size: 0.8rem;
+  color: var(--paper);
+  background: var(--ink-300);
+  border: var(--hair) solid var(--ink-400);
+  cursor: none;
+  --cursor-role: clickable;
+}
+
+.settings-close:hover {
+  background: var(--alert);
+  border-color: var(--alert);
+  color: var(--white);
+}
+
+.settings-title {
+  margin: 0 0 3px;
+  font-size: 1.7rem;
+  color: var(--white);
+}
+
+.settings-logout {
+  display: block;
+  width: 100%;
+  margin-top: 22px;
+  color: var(--alert);
+  border-color: var(--alert);
+}
+
+.settings-logout:hover {
+  background: var(--alert);
+  color: var(--white);
+}

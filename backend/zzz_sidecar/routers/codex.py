@@ -19,6 +19,8 @@ from ..models import (
     AgentSynergy,
     CodexMention,
     DiscSetDetail,
+    DiscSetOverview,
+    DiscSetRecommendation,
     EngineDetail,
 )
 from ..services.analysis import build_guide_index, find_guide, normalise_name
@@ -93,6 +95,78 @@ async def engine_detail(
     # ones the reader can act on.
     detail.recommended_for.sort(key=lambda m: (not m.owned, m.rank or 99, -m.rating))
     return detail
+
+
+@router.get("/disc-sets/overview", response_model=list[DiscSetOverview])
+async def disc_sets_overview(sync: SyncService = Depends(get_sync)) -> list[DiscSetOverview]:
+    """The Disks tab's grid: every set the catalog knows, each with a short
+    ranked list of who it's recommended for. Also doubles as the source for
+    the farming-goal picker's autocomplete, which wants the same name+icon
+    pairs and would otherwise duplicate this exact walk.
+
+    One pass over the roster's guides rather than the per-set walk
+    `disc_set_detail` does — done once for every set instead of once per
+    set requested.
+    """
+    names = await get_codex().all_disc_set_names()
+    by_key: dict[str, DiscSetOverview] = {
+        normalise_name(name): DiscSetOverview(set_name=name) for name in names
+    }
+
+    guides = _guides()
+    index = build_guide_index(guides)
+
+    # Real set art comes from Prydwen's own scraped icons, not the hakushin
+    # catalog — its icon paths are unpacked game-asset paths that don't
+    # resolve to a servable image anywhere this app has checked.
+    icon_by_key: dict[str, str] = {}
+    for guide in guides:
+        for rec in guide.disc_sets:
+            key = normalise_name(rec.set_name)
+            if rec.icon and key not in icon_by_key:
+                icon_by_key[key] = rec.icon
+
+    for agent in sync.agents:
+        guide = find_guide(agent, index)
+        if guide is None:
+            continue
+        # Same "keep the bigger of two recommendations" rule disc_set_detail
+        # uses when a guide lists a set at both 2-PC and 4-PC.
+        best_by_key: dict[str, DiscSetRecommendation] = {}
+        for rec in guide.disc_sets:
+            key = normalise_name(rec.set_name)
+            current = best_by_key.get(key)
+            if current is None or rec.pieces > current.pieces:
+                best_by_key[key] = rec
+
+        for key, rec in best_by_key.items():
+            row = by_key.get(key)
+            if row is None:
+                # A guide can name a set the catalog doesn't (patch-day lag);
+                # give it a tile anyway rather than dropping the mention.
+                row = DiscSetOverview(set_name=rec.set_name)
+                by_key[key] = row
+            row.top_users.append(
+                CodexMention(
+                    agent_name=agent.name,
+                    icon=_agent_art(agent),
+                    owned=agent.owned,
+                    rank=rec.rank,
+                    rating=rec.rating,
+                    pieces=rec.pieces,
+                )
+            )
+
+    rows = list(by_key.values())
+    for row in rows:
+        row.icon = icon_by_key.get(normalise_name(row.set_name), "")
+        # Best-in-slot first: owned agents lead, then rank/rating — the same
+        # ordering disc_set_detail uses for recommended_for.
+        row.top_users.sort(key=lambda m: (not m.owned, -m.pieces, m.rank or 99, -m.rating))
+        row.top_users = row.top_users[:8]
+
+    rows.sort(key=lambda r: r.set_name)
+    return rows
 
 
 @router.get("/disc-sets", response_model=DiscSetDetail)

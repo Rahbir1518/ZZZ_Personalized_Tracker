@@ -60,6 +60,7 @@
   color: var(--white);
 }
 
+
 /* --- vertical rail ------------------------------------------------------ */
 
 /**
@@ -141,12 +142,29 @@
   outline-offset: -4px;
 }
 
-.rail-cursor {
+/* The one rail item not packed at the top with the tabs. */
+.rail-settings {
   margin-top: auto;
-  font-family: var(--font-display);
-  font-size: 1.6rem;
-  line-height: 1;
-  color: rgba(5, 5, 5, 0.5);
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: none;
+  --cursor-role: clickable;
+  color: rgba(5, 5, 5, 0.42);
+  transition: color 120ms ease;
+}
+
+.rail-settings:hover {
+  color: var(--ink-000);
+}
+
+.rail-settings:focus-visible {
+  outline: var(--edge) solid var(--ink-000);
+  outline-offset: 2px;
 }
 
 /* --- boot / failure ----------------------------------------------------- */
@@ -160,10 +178,46 @@
   padding: 24px;
 }
 
+.boot-spinner {
+  display: grid;
+  justify-items: center;
+  gap: 20px;
+}
+
+/**
+ * A plain circular ring — the one rounded shape in an otherwise hard-cornered
+ * app, because a spinner reads as motion more clearly as a circle than as a
+ * rotating cut-corner square. Two adjacent border sides carry the gold
+ * accent rather than the whole ring, so it reads as a moving arc, not a
+ * static accent-coloured circle.
+ */
+.boot-ring {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: var(--edge) solid var(--ink-400);
+  border-top-color: var(--gold);
+  border-right-color: var(--gold);
+  animation: boot-spin 900ms linear infinite;
+}
+
+@keyframes boot-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .boot-text {
-  font-size: 2.4rem;
+  margin: 0;
+  font-size: 1.4rem;
   letter-spacing: 0.4em;
   color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-ring {
+    animation: none;
+  }
 }
 
 .boot-fail {

@@ -109,14 +109,44 @@ export interface TeamRecommendation {
   note: string
 }
 
+/**
+ * One entry of the substat priority order, with the goal value split out
+ * when Prydwen states one — e.g. `{ name: "CRIT RATE", target: "Until 80%" }`.
+ * `target` is empty for a stat Prydwen doesn't cap (chase as much as the
+ * build allows, not a specific number).
+ */
+export interface SubstatTarget {
+  name: string
+  target: string
+}
+
+/** One line of Prydwen's "Best Endgame Stats (Level 60)" box, e.g.
+ *  `{ stat: "CRIT RATE", value: "75-95%" }`. Empty when the page carries
+ *  this section as a screenshot instead of text. */
+export interface EndgameStat {
+  stat: string
+  value: string
+}
+
+/** One step of the "Skill Priority" levelling chain, e.g.
+ *  `{ skill: "Chain Attack", icon: "..." }`. Order is levelling order. */
+export interface SkillStep {
+  skill: string
+  icon: string
+}
+
 export interface AgentGuide {
   slug: string
   agent_name: string
   disc_sets: DiscSetRecommendation[]
   engines: EngineRecommendation[]
   substat_priority: string[]
+  /** The same order as `substat_priority`, with any stated cap split out. */
+  substat_targets: SubstatTarget[]
   /** Keyed by disc slot, e.g. { "4": ["CRIT Rate%"] }. */
   main_stats: Record<string, string[]>
+  endgame_stats: EndgameStat[]
+  skill_priority: SkillStep[]
   teams: TeamRecommendation[]
   patch: string
   fetched_at: number
@@ -171,6 +201,15 @@ export interface DiscSetDetail {
   four_piece: string
   equipped_by: CodexMention[]
   recommended_for: CodexMention[]
+}
+
+/** One tile of the Disks tab's grid: a set plus a short, ranked preview of
+ *  who it's recommended for. The full page is `DiscSetDetail`, fetched by
+ *  name once a tile is opened. */
+export interface DiscSetOverview {
+  set_name: string
+  icon: string
+  top_users: CodexMention[]
 }
 
 /**

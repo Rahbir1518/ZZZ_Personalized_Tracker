@@ -248,6 +248,27 @@
   border-color: var(--gold);
 }
 
+/* Priority, in the mention list: plain rank for most, a filled gold pill
+   for #1 — the one answer worth reading at a glance without parsing text. */
+.cx-rank-badge {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  font-family: var(--font-tech);
+  font-weight: 700;
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--ink-300);
+  border: var(--hair) solid var(--ink-400);
+}
+
+.cx-rank-badge.is-best {
+  color: var(--ink-000);
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
 /* --- who uses it -------------------------------------------------------- */
 
 .cx-mentions {

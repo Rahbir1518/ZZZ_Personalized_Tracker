@@ -1,0 +1,222 @@
+.goals-block {
+  display: grid;
+  gap: 10px;
+}
+
+.goals-block + .goals-block {
+  margin-top: 4px;
+}
+
+/* --- set chips ------------------------------------------------------------ */
+
+.goals-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.goals-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 5px 4px 6px;
+  font-size: 0.82rem;
+  color: var(--paper);
+  background: var(--ink-200);
+  border: var(--hair) solid var(--ink-400);
+}
+
+/* Pinned = the active farming target: a gold edge, same language the team
+   cards use for a pinned team. */
+.goals-chip.is-pinned {
+  border-color: var(--gold);
+}
+
+.goals-chip-pin,
+.goals-chip-remove {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  font-size: 0.62rem;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  cursor: none;
+  --cursor-role: clickable;
+}
+
+.goals-chip-pin:hover {
+  color: var(--paper);
+}
+
+.goals-chip.is-pinned .goals-chip-pin {
+  color: var(--gold);
+}
+
+.goals-chip-remove:hover {
+  color: var(--alert);
+}
+
+.goals-hint {
+  margin: -4px 0 2px;
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+/* --- stat target rows ------------------------------------------------------ */
+
+.goals-stats {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.goals-stat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+}
+
+.goals-stat-row + .goals-stat-row {
+  border-top: var(--hair) solid var(--ink-200);
+}
+
+/* Pinned = counts toward the gap score below, same language as a pinned set. */
+.goals-stat-row.is-pinned .goals-stat-name {
+  color: var(--white);
+}
+
+.goals-stat-row.is-pinned .goals-chip-pin {
+  color: var(--gold);
+}
+
+.goals-stat-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+  color: var(--paper);
+}
+
+.goals-stat-target {
+  margin-left: auto;
+  color: var(--gold);
+}
+
+.goals-stat-remove {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  font-size: 0.62rem;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  cursor: none;
+  --cursor-role: clickable;
+}
+
+.goals-stat-remove:hover {
+  color: var(--alert);
+}
+
+/* --- the add row + its autocomplete dropdown -------------------------------- */
+
+.goals-combo {
+  position: relative;
+}
+
+.goals-add {
+  display: flex;
+  gap: 6px;
+}
+
+.goals-add input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  font-family: var(--font-tech);
+  font-size: 0.8rem;
+  color: var(--paper);
+  background: var(--ink-200);
+  border: var(--hair) solid var(--ink-400);
+}
+
+.goals-add input:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+
+/* The stat-target form: stat name on its own full-width row, target + Add
+   below it. Two text inputs and a button never fit one row at the character
+   modal's column width, so this stacks instead of trying to shrink them. */
+.goals-add-stat {
+  display: grid;
+  gap: 6px;
+}
+
+.goals-add-stat-name {
+  width: 100%;
+  padding: 6px 8px;
+  font-family: var(--font-tech);
+  font-size: 0.8rem;
+  color: var(--paper);
+  background: var(--ink-200);
+  border: var(--hair) solid var(--ink-400);
+}
+
+.goals-add-stat-name:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+
+.goals-add .btn {
+  flex: 0 0 auto;
+  padding: 6px 14px;
+  font-size: 0.78rem;
+}
+
+.goals-suggestions {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 62px; /* clears the Add button so the dropdown doesn't cover it */
+  max-height: 220px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--ink-100);
+  border: var(--hair) solid var(--ink-400);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
+}
+
+.goals-suggestions button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 9px;
+  font-family: var(--font-tech);
+  font-size: 0.82rem;
+  text-align: left;
+  color: var(--paper);
+  background: none;
+  border: 0;
+  cursor: none;
+  --cursor-role: clickable;
+}
+
+.goals-suggestions button:hover,
+.goals-suggestions button.is-highlighted {
+  color: var(--ink-000);
+  background: var(--gold);
+}

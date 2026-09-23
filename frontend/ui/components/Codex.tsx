@@ -353,6 +353,13 @@ function MentionList({
             {mention.detail !== '' && <Tech>{mention.detail}</Tech>}
           </span>
 
+          {/* Priority, not just "recommended" — "best in slot" vs. "2nd
+              choice" is the actual answer to "who should I give this to". */}
+          {mention.rank > 0 && (
+            <span className={`cx-rank-badge ${mention.rank === 1 ? 'is-best' : ''}`}>
+              {mention.rank === 1 ? 'Best in slot' : `#${mention.rank} pick`}
+            </span>
+          )}
           {mention.pieces > 0 && (
             <span className={`cx-pc ${mention.pieces === 4 ? 'is-four' : ''}`}>
               {mention.pieces}PC

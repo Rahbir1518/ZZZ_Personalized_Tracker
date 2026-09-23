@@ -147,6 +147,44 @@ class TeamRecommendation(BaseModel):
     note: str = ""
 
 
+class SubstatTarget(BaseModel):
+    """One entry of the substat priority order, with the goal value split out
+    from the stat name when Prydwen states one.
+
+    Prydwen writes most of the priority order as bare names — "aim for as much
+    of this as the build allows" is implicit — but a handful of stats carry an
+    explicit cap in the source text, e.g. "CRIT RATE (Until 80%)": past that
+    point the stat stops being worth chasing over the next one in the order.
+    ``target`` is empty for every stat Prydwen doesn't cap.
+    """
+
+    name: str
+    target: str = ""
+
+
+class EndgameStat(BaseModel):
+    """One line of Prydwen's "Best Endgame Stats (Level 60)" box, e.g.
+    ``{"stat": "CRIT RATE", "value": "75-95%"}``.
+
+    A handful of agent pages carry this section as an embedded screenshot
+    instead of text (Prydwen's own inconsistency, not this parser's) — those
+    pages simply produce an empty list here, same as any other section the
+    page doesn't have in a machine-readable form.
+    """
+
+    stat: str
+    value: str
+
+
+class SkillStep(BaseModel):
+    """One entry of Prydwen's "Skill Priority" chain, e.g.
+    ``{"skill": "Chain Attack", "icon": "..."}``. Order is levelling order,
+    not in-combat order."""
+
+    skill: str
+    icon: str = ""
+
+
 class AgentGuide(BaseModel):
     """One agent's recommendations, as parsed from Prydwen."""
 
@@ -156,8 +194,18 @@ class AgentGuide(BaseModel):
     engines: list[EngineRecommendation] = Field(default_factory=list)
     #: Ordered best-first, e.g. ["CRIT DMG", "ATK%", "Anomaly Proficiency"].
     substat_priority: list[str] = Field(default_factory=list)
+    #: The same order, with any stated cap (e.g. "Until 80%") split into its
+    #: own field instead of left inline in the name.
+    substat_targets: list[SubstatTarget] = Field(default_factory=list)
     #: Recommended main stat per slot, keyed by slot number as a string.
     main_stats: dict[str, list[str]] = Field(default_factory=dict)
+    #: Prydwen's "Best Endgame Stats (Level 60)" box: full-build stat ranges
+    #: worth aiming for, not per-substat priority — the two are complementary,
+    #: not duplicates.
+    endgame_stats: list[EndgameStat] = Field(default_factory=list)
+    #: Which skill to level first, second, etc. — the chain of icons under
+    #: "Skill Priority" on the guide page.
+    skill_priority: list[SkillStep] = Field(default_factory=list)
     teams: list[TeamRecommendation] = Field(default_factory=list)
     #: Game patch this guide was cached against. Supplied by the sync service
     #: from the metadata source, not scraped from the page.
@@ -238,6 +286,18 @@ class DiscSetDetail(BaseModel):
     #: Your agents wearing pieces of it; ``pieces`` is how many.
     equipped_by: list[CodexMention] = Field(default_factory=list)
     recommended_for: list[CodexMention] = Field(default_factory=list)
+
+
+class DiscSetOverview(BaseModel):
+    """One row of the Disks tab's grid: a set plus a short, ranked list of
+    who it's recommended for — the tile itself, not the full page (that's
+    still `DiscSetDetail`, fetched by name when the tile is opened)."""
+
+    set_name: str
+    icon: str = ""
+    #: Best-in-slot first. Capped short (see the router) — a tile is a
+    #: preview, the detail page is where the full ranked list lives.
+    top_users: list[CodexMention] = Field(default_factory=list)
 
 
 class AgentSynergy(BaseModel):

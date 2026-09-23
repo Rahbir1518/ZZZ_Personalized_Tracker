@@ -15,7 +15,10 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { api } from '../api'
+import { useAgentGoal, type AgentGoal } from '../hooks/useAgentGoals'
 import type { Agent, AgentBuild, AgentDetail, BuildGap } from '../types'
+import { computeGoalGap, type GoalGap } from '../goalGap'
+import { AgentGoals } from './AgentGoals'
 import { BackBar, CodexPage, useCodexStack, type CodexTarget } from './Codex'
 import { Chip, ItemIcon, Meter, RuleTitle, Tech } from './Ui'
 import './AgentModal.css'
@@ -26,14 +29,32 @@ interface Props {
   agent: Agent
   origin: DOMRect
   onClose: () => void
+  /** A disc-set row (equipped or recommended) hands its name here and closes
+   *  the modal, instead of drilling through in place — see DisksTab.tsx for
+   *  why a set's full "who's it for" answer needs real space. Engine rows
+   *  still drill through locally; only sets redirect. The second argument
+   *  is this agent, passed along so the set's own back button can return
+   *  here instead of only ever landing on the set grid. */
+  onNavigateToSet: (name: string, returnTo?: { agentId: number; agentName: string }) => void
 }
 
-export function AgentModal({ agent, origin, onClose }: Props): React.JSX.Element {
+export function AgentModal({ agent, origin, onClose, onNavigateToSet }: Props): React.JSX.Element {
   const reduced = useReducedMotion() ?? false
   const [detail, setDetail] = useState<AgentDetail | null>(null)
   const [expanded, setExpanded] = useState(reduced)
   const [error, setError] = useState('')
   const codex = useCodexStack()
+
+  /** Engines still drill through the local codex stack; sets close this
+   *  modal and hand off to the Disks tab instead. */
+  const handleOpen = (target: CodexTarget): void => {
+    if (target.kind === 'set') {
+      onClose()
+      onNavigateToSet(target.name, { agentId: agent.id, agentName: agent.name })
+    } else {
+      codex.open(target)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -124,7 +145,7 @@ export function AgentModal({ agent, origin, onClose }: Props): React.JSX.Element
               ) : detail === null ? (
                 <p className="ov-loading display">Loading</p>
               ) : (
-                <DetailBody detail={detail} onOpen={codex.open} />
+                <DetailBody detail={detail} onOpen={handleOpen} />
               )}
             </motion.div>
           )}
@@ -143,6 +164,10 @@ function DetailBody({
 }): React.JSX.Element {
   const { agent, build, guide, gap } = detail
   const portrait = agent.rectangle_icon || agent.square_icon
+  // One call for the whole modal — the gap panel and the goal editor both
+  // need to see the same live edits, not two independent copies that only
+  // agree again once both remount. See useAgentGoal's own doc comment.
+  const goalApi = useAgentGoal(agent.id)
 
   return (
     <div className="dt">
@@ -236,6 +261,39 @@ function DetailBody({
             <p className="dt-empty">No guide cached. Run a sync to fetch one.</p>
           ) : (
             <>
+              {guide.endgame_stats.length > 0 && (
+                <>
+                  <h4 className="dt-sub">Best endgame stats (Lv. 60)</h4>
+                  <ul className="dt-endgame">
+                    {guide.endgame_stats.map((stat) => (
+                      <li key={stat.stat}>
+                        <span className="dt-endgame-stat">{stat.stat}</span>
+                        <span className="dt-endgame-value">{stat.value}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+
+              {guide.skill_priority.length > 0 && (
+                <>
+                  <h4 className="dt-sub">Skill priority</h4>
+                  <ol className="dt-skills">
+                    {guide.skill_priority.map((step, index) => (
+                      <li key={`${step.skill}-${index}`} className="dt-skill">
+                        <ItemIcon src={step.icon} size={30} />
+                        <span className="dt-skill-name">{step.skill}</span>
+                        {index < guide.skill_priority.length - 1 && (
+                          <span className="dt-skill-arrow" aria-hidden="true">
+                            ›
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                </>
+              )}
+
               <h4 className="dt-sub">Best W-Engines</h4>
               <ol className="dt-ranked">
                 {guide.engines.slice(0, 5).map((engine) => (
@@ -293,11 +351,31 @@ function DetailBody({
                 ))}
               </ul>
 
-              {guide.substat_priority.length > 0 && (
+              {guide.substat_targets.length > 0 ? (
                 <>
                   <h4 className="dt-sub">Substat priority</h4>
-                  <p className="dt-priority display">{guide.substat_priority.join(' > ')}</p>
+                  <ol className="dt-substats">
+                    {guide.substat_targets.map((stat, index) => (
+                      <li key={stat.name} className="dt-substat-row">
+                        <span className="dt-rank">{index + 1}</span>
+                        <span className="dt-substat-name">{stat.name}</span>
+                        {stat.target !== '' && (
+                          <Tech className="dt-substat-target">{stat.target}</Tech>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
                 </>
+              ) : (
+                // A guide cached before schema_version 3 has no
+                // substat_targets yet; the plain order still reads fine
+                // until the next sync backfills the per-stat caps.
+                guide.substat_priority.length > 0 && (
+                  <>
+                    <h4 className="dt-sub">Substat priority</h4>
+                    <p className="dt-priority display">{guide.substat_priority.join(' > ')}</p>
+                  </>
+                )
               )}
 
               {Object.keys(guide.main_stats).length > 0 && (
@@ -318,13 +396,12 @@ function DetailBody({
         </section>
 
         {/* --------------------------------------------------------- gap */}
+        <GapSection goal={goalApi.goal} build={build} guide={guide} gap={gap} />
+
+        {/* --------------------------------------------------- your goals */}
         <section className="dt-col panel">
-          <RuleTitle as="h3">The gap</RuleTitle>
-          {gap === null ? (
-            <p className="dt-empty">Own this agent to see a comparison.</p>
-          ) : (
-            <GapReadout gap={gap} />
-          )}
+          <RuleTitle as="h3">Your farming goals</RuleTitle>
+          <AgentGoals goalApi={goalApi} />
         </section>
       </div>
     </div>
@@ -357,6 +434,80 @@ function EquippedEngine({
         </Tech>
       </div>
     </button>
+  )
+}
+
+/**
+ * "The gap" section. Shows the sidecar's own score by default; if a farming
+ * goal is pinned to a set combo that actually disagrees with the
+ * recommendation, it switches to a client-side score against *that* instead
+ * — see goalGap.ts for why this only overrides rather than always running
+ * alongside.
+ */
+function GapSection({
+  goal,
+  build,
+  guide,
+  gap
+}: {
+  goal: AgentGoal
+  build: AgentBuild | null
+  guide: AgentDetail['guide']
+  gap: BuildGap | null
+}): React.JSX.Element {
+  const recommendedSets = guide?.disc_sets.filter((s) => s.recommended).map((s) => s.set_name) ?? []
+  const goalGap = computeGoalGap(build, recommendedSets, goal)
+
+  return (
+    <section className="dt-col panel">
+      <RuleTitle as="h3">The gap</RuleTitle>
+      {goalGap !== null ? (
+        <GoalGapReadout goalGap={goalGap} />
+      ) : gap === null ? (
+        <p className="dt-empty">Own this agent to see a comparison.</p>
+      ) : (
+        <GapReadout gap={gap} />
+      )}
+    </section>
+  )
+}
+
+function GoalGapReadout({ goalGap }: { goalGap: GoalGap }): React.JSX.Element {
+  const tone = goalGap.score > 0.8 ? 'good' : goalGap.score > 0.5 ? 'gold' : 'warn'
+
+  return (
+    <>
+      <p className="dt-note is-goal">
+        Scored against your pinned goal, not the recommendation — see &quot;Your farming
+        goals&quot; below.
+      </p>
+
+      <h4 className="dt-sub">Overall</h4>
+      <Meter value={goalGap.score} tone={tone} />
+
+      <h4 className="dt-sub">Set coverage</h4>
+      <Meter value={goalGap.setCoverage} tone={tone} />
+      {goalGap.matchedSets.length > 0 && (
+        <p className="dt-note is-good">Matched: {goalGap.matchedSets.join(', ')}</p>
+      )}
+      {goalGap.missingSets.length > 0 && (
+        <p className="dt-note is-warn">Missing: {goalGap.missingSets.join(', ')}</p>
+      )}
+
+      {goalGap.stats.length > 0 && (
+        <>
+          <h4 className="dt-sub">Your stat targets</h4>
+          <ul className="dt-goal-stats">
+            {goalGap.stats.map((stat) => (
+              <li key={stat.stat} className={`dt-note ${stat.met === null ? '' : stat.met ? 'is-good' : 'is-warn'}`}>
+                {stat.stat}: {stat.equipped} / {stat.target}
+                {stat.met === null && ' (not a plain number — check by eye)'}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </>
   )
 }
 

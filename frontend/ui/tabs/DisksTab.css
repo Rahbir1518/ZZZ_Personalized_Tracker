@@ -1,0 +1,320 @@
+.disks {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+}
+
+/* --- bar ------------------------------------------------------------------ */
+
+.disks-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.disks-title {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: 0.02em;
+  color: var(--white);
+}
+
+.disks-search {
+  flex: 1 1 220px;
+  max-width: 320px;
+  margin-left: auto;
+}
+
+/* --- body / grid ------------------------------------------------------------ */
+
+.disks-body {
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 6px;
+  padding-bottom: 24px;
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.disks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.disk-tile {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  text-align: left;
+  color: inherit;
+  background: var(--ink-100);
+  border: var(--hair) solid var(--ink-300);
+  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+  cursor: none;
+  --cursor-role: clickable;
+  transition: border-color 120ms ease;
+}
+
+.disk-tile:hover {
+  border-color: var(--muted);
+}
+
+.disk-tile-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.disk-tile-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.28rem;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  color: var(--paper);
+}
+
+.disk-tile-empty {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.disk-tile-users {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Big enough to recognise a face at a glance, matching Farm Next's own
+   portrait size (46px) below it, rather than a much smaller thumbnail row. */
+.disk-tile-user {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  overflow: hidden;
+  background: var(--ink-300);
+  border: var(--hair) solid var(--ink-400);
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+}
+
+.disk-tile-user img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.disk-tile-user.is-missing img {
+  filter: grayscale(1) brightness(0.45);
+}
+
+.disk-tile-user-blank {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* The #1 pick among the tile's preview — a small gold corner, same language
+   Farm Next's user chips use for "owned", repurposed here for "best in slot". */
+.disk-tile-best {
+  position: absolute;
+  inset: 0 0 auto auto;
+  width: 0;
+  height: 0;
+  border-right: 9px solid var(--gold);
+  border-bottom: 9px solid transparent;
+}
+
+/* --- detail view ------------------------------------------------------------ */
+
+.disks-detail {
+  position: relative;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.disks-detail-body {
+  padding-bottom: 24px;
+}
+
+/* --- Farm Next, moved here from Teams ---------------------------------------- */
+
+.disks-farming {
+  --cut: 14px;
+}
+
+.disks-farming.is-collapsed {
+  padding-bottom: 0;
+}
+
+.disks-farming-head {
+  margin: 0 0 10px;
+}
+
+.disks-farming.is-collapsed .disks-farming-head {
+  margin-bottom: 0;
+}
+
+.disks-farming-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: none;
+  --cursor-role: clickable;
+}
+
+.disks-farming-toggle:focus-visible {
+  outline: var(--edge) solid var(--gold);
+  outline-offset: 3px;
+}
+
+.disks-farming-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.2rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.disks-farming-count {
+  color: var(--muted);
+}
+
+.disks-farming-chevron {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-left: auto;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--muted);
+  background: var(--ink-200);
+  border: var(--hair) solid var(--ink-400);
+  transform: rotate(90deg);
+  transition:
+    transform 160ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+.disks-farming-toggle:hover .disks-farming-chevron {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
+.disks-farming-toggle[aria-expanded='true'] .disks-farming-chevron {
+  transform: rotate(-90deg);
+}
+
+.farm-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.farm-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 11px 0;
+}
+
+.farm-row + .farm-row {
+  border-top: var(--hair) solid var(--ink-200);
+}
+
+.farm-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.farm-text strong {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.16rem;
+  letter-spacing: 0.03em;
+  color: var(--paper);
+}
+
+.farm-reason {
+  font-family: var(--font-tech);
+  font-size: 0.76rem;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.farm-users {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 7px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.farm-user {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  overflow: hidden;
+  background: var(--ink-300);
+  border: var(--hair) solid var(--ink-400);
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+}
+
+.farm-user img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.farm-user-blank {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.farm-user.is-owned {
+  border-color: var(--gold);
+}
+
+.farm-user.is-owned::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto auto;
+  width: 0;
+  height: 0;
+  border-right: 9px solid var(--gold);
+  border-bottom: 9px solid transparent;
+}
+
+.farm-user.is-missing img {
+  filter: grayscale(1) brightness(0.4);
+}

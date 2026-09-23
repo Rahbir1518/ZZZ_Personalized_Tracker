@@ -37,6 +37,67 @@
   max-width: 320px;
 }
 
+/* --- sort dropdown -------------------------------------------------------- */
+
+.roster-sort {
+  position: relative;
+}
+
+.roster-sort-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.82rem;
+}
+
+.roster-sort-menu {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 6px);
+  left: 0;
+  width: max-content;
+  min-width: 240px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--ink-100);
+  border: var(--hair) solid var(--ink-400);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+}
+
+.roster-sort-menu button {
+  display: grid;
+  gap: 1px;
+  width: 100%;
+  padding: 8px 10px;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: none;
+  --cursor-role: clickable;
+}
+
+.roster-sort-menu button:hover,
+.roster-sort-menu button.is-active {
+  background: var(--ink-200);
+}
+
+.roster-sort-label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.92rem;
+  letter-spacing: 0.02em;
+  color: var(--paper);
+}
+
+.roster-sort-menu button.is-active .roster-sort-label {
+  color: var(--gold);
+}
+
+.roster-sort-hint {
+  color: var(--muted);
+}
+
 .roster-counts {
   display: flex;
   gap: 18px;

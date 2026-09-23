@@ -11,18 +11,21 @@ import { useCallback, useEffect, useState } from 'react'
 import { ApiError, api } from './api'
 import { ErrorStrip, Tech } from './components/Ui'
 import { LoginPanel } from './components/LoginPanel'
+import { SettingsModal } from './components/SettingsModal'
 import { SyncButton } from './components/SyncButton'
 import { CharactersTab } from './tabs/CharactersTab'
+import { DisksTab } from './tabs/DisksTab'
 import { TeamsTab } from './tabs/TeamsTab'
 import type { Agent, Analysis } from './types'
 import './App.css'
 
-type Tab = 'characters' | 'teams'
+type Tab = 'characters' | 'teams' | 'disks'
 type Phase = 'starting' | 'needs-login' | 'ready' | 'sidecar-failed'
 
 const TABS: { id: Tab; label: string; code: string }[] = [
   { id: 'characters', label: 'Agents', code: 'R-01' },
-  { id: 'teams', label: 'Teams', code: 'R-02' }
+  { id: 'teams', label: 'Teams', code: 'R-02' },
+  { id: 'disks', label: 'Disks', code: 'R-03' }
 ]
 
 /** The layered, low-contrast background. Purely decorative. */
@@ -49,6 +52,37 @@ export function App(): React.JSX.Element {
   const [analysis, setAnalysis] = useState<Analysis | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<ApiError | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  // A disc-set click inside the agent/team overlays hands its name here and
+  // switches to Disks, rather than opening yet another nested panel — the
+  // full "who's it for, ranked" answer needs real space, not a modal aside.
+  // `returnTo` travels with it so the set's own back button can send the
+  // person back to the agent they clicked from, not to the set grid — only
+  // AgentModal ever supplies one; a click from Teams has no single agent to
+  // return to, so its own back button behaves like the plain "close" it
+  // always has.
+  const [pendingSet, setPendingSet] = useState<{
+    name: string
+    returnTo: { agentId: number; agentName: string } | null
+  } | null>(null)
+
+  const navigateToSet = useCallback(
+    (name: string, returnTo?: { agentId: number; agentName: string }) => {
+      setPendingSet({ name, returnTo: returnTo ?? null })
+      setTab('disks')
+    },
+    []
+  )
+
+  // The Disks tab's back button hands the agent id back here once the person
+  // asks to return to it; this is what actually reopens CharactersTab on
+  // that agent.
+  const [pendingAgentId, setPendingAgentId] = useState<number | null>(null)
+
+  const returnToAgent = useCallback((agentId: number) => {
+    setPendingAgentId(agentId)
+    setTab('characters')
+  }, [])
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -62,6 +96,27 @@ export function App(): React.JSX.Element {
     } finally {
       setLoading(false)
     }
+  }, [])
+
+  /**
+   * Drops the sidecar's session and the saved cookies, then hands back to
+   * the login screen — the one path to signing in as a different account.
+   *
+   * Best-effort on the sidecar call: a session that is already gone (sidecar
+   * restarted, cookies expired) must not block clearing the local copy, or
+   * the person is stuck unable to log back in as anyone.
+   */
+  const logout = useCallback(async () => {
+    try {
+      await api.logout()
+    } catch {
+      // Nothing left to log out of server-side; still clear the local copy.
+    }
+    await window.tracker.credentials.clear()
+    setAgents([])
+    setAnalysis(null)
+    setError(null)
+    setPhase('needs-login')
   }, [])
 
   useEffect(() => {
@@ -92,7 +147,10 @@ export function App(): React.JSX.Element {
     return (
       <div className="boot">
         <Backdrop word="ZZZ" />
-        <p className="boot-text display">Booting</p>
+        <div className="boot-spinner" role="status" aria-live="polite">
+          <span className="boot-ring" aria-hidden="true" />
+          <p className="boot-text display">Loading</p>
+        </div>
       </div>
     )
   }
@@ -131,7 +189,7 @@ export function App(): React.JSX.Element {
 
   return (
     <div className="shell">
-      <Backdrop word={tab === 'characters' ? 'AGENTS' : 'TEAMS'} />
+      <Backdrop word={tab === 'characters' ? 'AGENTS' : tab === 'teams' ? 'TEAMS' : 'DISKS'} />
 
       <div className="shell-stage">
         <header className="topbar">
@@ -154,9 +212,31 @@ export function App(): React.JSX.Element {
 
         <main className="shell-main">
           {tab === 'characters' ? (
-            <CharactersTab agents={agents} gaps={analysis?.build_gaps ?? []} loading={loading} />
+            <CharactersTab
+              agents={agents}
+              gaps={analysis?.build_gaps ?? []}
+              myTeams={analysis?.my_teams ?? []}
+              suggestedTeams={analysis?.suggested_teams ?? []}
+              loading={loading}
+              onNavigateToSet={navigateToSet}
+              initialAgentId={pendingAgentId}
+              onConsumeInitialAgent={() => setPendingAgentId(null)}
+            />
+          ) : tab === 'teams' ? (
+            <TeamsTab
+              analysis={analysis}
+              agents={agents}
+              loading={loading}
+              onNavigateToSet={navigateToSet}
+            />
           ) : (
-            <TeamsTab analysis={analysis} agents={agents} loading={loading} />
+            <DisksTab
+              farming={analysis?.farming ?? []}
+              loading={loading}
+              initialSet={pendingSet}
+              onConsumeInitialSet={() => setPendingSet(null)}
+              onReturnToAgent={returnToAgent}
+            />
           )}
         </main>
       </div>
@@ -178,10 +258,49 @@ export function App(): React.JSX.Element {
           </button>
         ))}
 
-        <span className="rail-cursor" aria-hidden="true">
-          ›
-        </span>
+        <button
+          type="button"
+          className="rail-settings"
+          aria-label="Settings"
+          onClick={() => setSettingsOpen(true)}
+        >
+          <SettingsIcon />
+        </button>
       </nav>
+
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onLogout={() => void logout()}
+      />
     </div>
+  )
+}
+
+/** A plain drawn gear, matching the rail's other hand-drawn marks (the brand
+ *  wedge, the rank badges) rather than pulling in an icon font for one glyph. */
+function SettingsIcon(): React.JSX.Element {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="3.2" />
+      {/* 8 spokes, evenly spaced at 45° with matching inner/outer radii —
+          the previous version's diagonals were hand-guessed and landed at
+          different distances from centre, which is what read as "off". */}
+      <path
+        d="M12 2.8v2.6M12 18.6v2.6M21.2 12h-2.6M5.4 12H2.8
+           M16.67 7.33 18.51 5.49M7.33 7.33 5.49 5.49
+           M7.33 16.67 5.49 18.51M16.67 16.67 18.51 18.51"
+      />
+    </svg>
   )
 }

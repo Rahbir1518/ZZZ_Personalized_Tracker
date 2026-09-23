@@ -28,6 +28,10 @@ interface Props {
   agents: Agent[]
   origin: DOMRect
   onClose: () => void
+  /** A disc-set row hands its name here and closes the modal, instead of
+   *  drilling through in place — see DisksTab.tsx. Engine rows still drill
+   *  through locally; only sets redirect. */
+  onNavigateToSet: (name: string) => void
 }
 
 /** Same folding rule the backend matches on. */
@@ -44,11 +48,28 @@ function resolveAgent(name: string, agents: Agent[]): Agent | undefined {
   return agents.find((a) => normalise(a.name) === key || normalise(a.full_name) === key)
 }
 
-export function TeamModal({ team, agents, origin, onClose }: Props): React.JSX.Element {
+export function TeamModal({
+  team,
+  agents,
+  origin,
+  onClose,
+  onNavigateToSet
+}: Props): React.JSX.Element {
   const reduced = useReducedMotion() ?? false
   const [expanded, setExpanded] = useState(reduced)
   const [details, setDetails] = useState<Record<string, AgentDetail | null>>({})
   const codex = useCodexStack()
+
+  /** Engines still drill through the local codex stack; sets close this
+   *  modal and hand off to the Disks tab instead. */
+  const handleOpen = (target: CodexTarget): void => {
+    if (target.kind === 'set') {
+      onClose()
+      onNavigateToSet(target.name)
+    } else {
+      codex.open(target)
+    }
+  }
 
   const members: TeamMember[] =
     team.team.members.length > 0
@@ -186,7 +207,7 @@ export function TeamModal({ team, agents, origin, onClose }: Props): React.JSX.E
                         owned={team.owned_members.includes(member.name)}
                         detail={details[member.name] ?? null}
                         loaded={member.name in details}
-                        onOpen={codex.open}
+                        onOpen={handleOpen}
                       />
                     ))}
                   </div>
@@ -354,7 +375,15 @@ function MemberColumn({
             {guide !== null && guide.substat_priority.length > 0 && (
               <>
                 <h4 className="tm-sub-head">Substats</h4>
-                <p className="tm-priority">{guide.substat_priority.join(' > ')}</p>
+                <p className="tm-priority">
+                  {/* Fold each stated cap back inline ("CRIT RATE (Until
+                      80%)") — the compact column here has no room for the
+                      row-per-stat layout the character modal uses. */}
+                  {(guide.substat_targets.length > 0
+                    ? guide.substat_targets.map((t) => (t.target !== '' ? `${t.name} (${t.target})` : t.name))
+                    : guide.substat_priority
+                  ).join(' > ')}
+                </p>
               </>
             )}
 

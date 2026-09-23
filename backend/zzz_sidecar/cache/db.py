@@ -143,13 +143,20 @@ class Cache:
     def get_roster(self, uid: str) -> dict[str, Any] | None:
         """The cached roster for a UID.
 
-        Falls back to the most recent roster of *any* UID when there is no exact
-        match. This app serves one signed-in person, so "the stored roster" is
-        unambiguous, and the fallback means a missing or changed UID degrades to
-        slightly stale data rather than an empty screen.
+        Falls back to the most recent roster of *any* UID only when ``uid``
+        itself is unknown (``""``) — the brief window at process startup
+        before the saved-cookie auto-login has resolved and this session
+        does not yet know which account it is about to be. That fallback
+        used to apply unconditionally, which is fine on a relaunch but wrong
+        the moment two different accounts are involved: signing in as a
+        second account is a real, known ``uid`` with no cache of its own
+        yet, and falling back would silently show the *first* account's
+        roster relabelled as the second one's, which is worse than an empty
+        screen for that one sync. A known ``uid`` with no cache is exactly
+        the case that should show nothing until a sync actually runs.
         """
         row = self._read_one("SELECT payload FROM roster_snapshot WHERE uid = ?", (uid,))
-        if row is None:
+        if row is None and uid == "":
             row = self._read_one(
                 "SELECT payload FROM roster_snapshot ORDER BY fetched_at DESC LIMIT 1"
             )
@@ -163,10 +170,12 @@ class Cache:
         )
 
     def get_builds(self, uid: str) -> dict[int, dict[str, Any]]:
-        """Equipped builds for a UID, with the same single-user fallback as
-        ``get_roster`` so the two can never disagree about what is cached."""
+        """Equipped builds for a UID, with the same unknown-``uid``-only
+        fallback as ``get_roster`` so the two can never disagree about what
+        is cached, and can never leak one account's builds into another's
+        roster either."""
         rows = self._read_all("SELECT agent_id, payload FROM agent_build WHERE uid = ?", (uid,))
-        if not rows:
+        if not rows and uid == "":
             rows = self._read_all(
                 "SELECT agent_id, payload FROM agent_build "
                 "WHERE uid = (SELECT uid FROM agent_build ORDER BY fetched_at DESC LIMIT 1)"

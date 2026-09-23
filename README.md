@@ -30,7 +30,7 @@ Scaffolded and wired end to end; milestone 1 is functional. See
 | 3. Character modal | Built, needs a live account to verify |
 | 4. Teams tab | Built, needs a live account to verify |
 | 5. Sync | Built, capped at 5/day |
-| 6. QR login | Not started |
+| 6. QR login | Dropped. `genshin.py`'s QR helper is Chinese-Miyoushe-only, not Global HoYoLAB — cookie paste is the one auth path. |
 
 ---
 
