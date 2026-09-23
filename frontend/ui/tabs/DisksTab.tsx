@@ -20,7 +20,7 @@ import { api } from '../api'
 import { BackBar, CodexPage } from '../components/Codex'
 import { AgentSearch, type Suggestion } from '../components/AgentSearch'
 import { EmptyState, ItemIcon, Panel, Tech } from '../components/Ui'
-import type { DiscSetOverview, FarmingPriority } from '../types'
+import type { DiscSetOverview, DomainCoverage, FarmingPriority } from '../types'
 import './DisksTab.css'
 
 interface PendingSet {
@@ -34,6 +34,7 @@ interface PendingSet {
 
 interface Props {
   farming: FarmingPriority[]
+  domainCoverage: DomainCoverage[]
   loading: boolean
   /** Set from outside (a disc-set click inside an agent/team overlay) — see
    *  App.tsx. Consumed once, then handed back via `onConsumeInitialSet`. */
@@ -44,6 +45,7 @@ interface Props {
 
 export function DisksTab({
   farming,
+  domainCoverage,
   loading,
   initialSet,
   onConsumeInitialSet,
@@ -53,6 +55,7 @@ export function DisksTab({
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
   const [farmOpen, setFarmOpen] = useState(true)
+  const [coverageOpen, setCoverageOpen] = useState(true)
   const [selected, setSelected] = useState<
     (PendingSet & { icon: string }) | null
   >(null)
@@ -170,6 +173,38 @@ export function DisksTab({
             </Panel>
           )}
 
+          {domainCoverage.length > 0 && (
+            <Panel className={`disks-farming ${coverageOpen ? '' : 'is-collapsed'}`} tick>
+              <h3 className="disks-farming-head">
+                <button
+                  type="button"
+                  className="disks-farming-toggle"
+                  onClick={() => setCoverageOpen((open) => !open)}
+                  aria-expanded={coverageOpen}
+                  aria-controls="coverage-list"
+                >
+                  <span className="display disks-farming-title">Farm together</span>
+                  {!coverageOpen && (
+                    <Tech className="disks-farming-count">
+                      {domainCoverage.length} stage{domainCoverage.length === 1 ? '' : 's'}
+                    </Tech>
+                  )}
+                  <span className="disks-farming-chevron" aria-hidden="true">
+                    ›
+                  </span>
+                </button>
+              </h3>
+
+              {coverageOpen && (
+                <ol className="farm-list" id="coverage-list">
+                  {domainCoverage.map((coverage) => (
+                    <CoverageRow key={coverage.sets.join('+')} coverage={coverage} />
+                  ))}
+                </ol>
+              )}
+            </Panel>
+          )}
+
           {error !== '' ? (
             <EmptyState title="Couldn't load sets">{error}</EmptyState>
           ) : sets === null ? (
@@ -256,6 +291,44 @@ function FarmRow({ priority }: { priority: FarmingPriority }): React.JSX.Element
         {priority.agents.length > 0 && (
           <ul className="farm-users">
             {priority.agents.map((user) => (
+              <li
+                key={user.name}
+                className={`farm-user ${user.owned ? 'is-owned' : 'is-missing'}`}
+                title={user.owned ? user.name : `${user.name} — not owned`}
+              >
+                {user.icon !== '' ? (
+                  <img src={user.icon} alt={user.name} loading="lazy" draggable={false} />
+                ) : (
+                  <span className="farm-user-blank">{user.name.slice(0, 2)}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </li>
+  )
+}
+
+/** One farming stage: the two sets it drops together, then everyone either
+ *  one serves — the pitch being that a run toward either set is never
+ *  wasted, since the stage drops both regardless of which one you wanted. */
+function CoverageRow({ coverage }: { coverage: DomainCoverage }): React.JSX.Element {
+  return (
+    <li className="farm-row">
+      <div className="coverage-pair">
+        {coverage.icons.map((icon, i) => (
+          <ItemIcon key={coverage.sets[i]} src={icon} size={42} />
+        ))}
+      </div>
+
+      <div className="farm-text">
+        <strong>{coverage.sets.join(' + ')}</strong>
+        <span className="farm-reason">{coverage.reason}</span>
+
+        {coverage.agents.length > 0 && (
+          <ul className="farm-users">
+            {coverage.agents.map((user) => (
               <li
                 key={user.name}
                 className={`farm-user ${user.owned ? 'is-owned' : 'is-missing'}`}

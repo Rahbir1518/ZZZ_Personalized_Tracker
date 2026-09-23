@@ -232,6 +232,7 @@ export function App(): React.JSX.Element {
           ) : (
             <DisksTab
               farming={analysis?.farming ?? []}
+              domainCoverage={analysis?.domain_coverage ?? []}
               loading={loading}
               initialSet={pendingSet}
               onConsumeInitialSet={() => setPendingSet(null)}

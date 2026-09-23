@@ -274,11 +274,23 @@ export interface FarmingPriority {
   agents: FarmingAgent[]
 }
 
+/** One Routine Cleanup stage: the two sets it drops together, and every
+ *  agent either one is recommended for — see `FarmingPriority`, whose
+ *  `agents` field this mirrors. */
+export interface DomainCoverage {
+  /** Always 2: the stage's two possible drops. */
+  sets: string[]
+  icons: string[]
+  agents: FarmingAgent[]
+  reason: string
+}
+
 export interface Analysis {
   build_gaps: BuildGap[]
   my_teams: TeamStatus[]
   suggested_teams: TeamStatus[]
   farming: FarmingPriority[]
+  domain_coverage: DomainCoverage[]
   computed_at: number
 }
 

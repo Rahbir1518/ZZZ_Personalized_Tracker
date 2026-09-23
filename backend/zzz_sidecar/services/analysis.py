@@ -22,11 +22,13 @@ from ..models import (
     AgentGuide,
     Analysis,
     BuildGap,
+    DomainCoverage,
     FarmingAgent,
     FarmingPriority,
     GapSeverity,
     TeamStatus,
 )
+from .domains import load_domain_pairs
 
 #: Weights for the overall build score. Disc sets dominate because they are the
 #: slowest thing to farm; substats matter but are partly luck.
@@ -75,8 +77,21 @@ def build_guide_index(guides: list[AgentGuide]) -> dict[str, AgentGuide]:
     "Starlight - Billy" is "Billy - Starlight". Indexing the *set* of words as
     well catches those without any per-agent special-casing.
 
+    The Jane/full_name trick only works for *owned* agents, because that's the
+    only place `full_name` gets populated (HoYoLAB supplies it for a roster
+    entry; the un-owned catalog source only ever has the short display name —
+    see `metadata.py`). So a catalog-only "Jane" has no full name to try and
+    would otherwise never resolve to Prydwen's "Jane Doe" guide at all, which
+    is what silently left her (and every other un-owned two-word-named agent)
+    without a backfilled portrait. Indexing each guide under the first word of
+    its own name closes that gap without touching `find_guide`: "Jane" now
+    resolves on the very first, plain-name lookup, the same path "Anby" or
+    "Billy" already take.
+
     Exact names win: a later, less specific key never overwrites one already
-    claimed, so "Anby" cannot be stolen by "Anby: Soldier 0".
+    claimed, so "Anby" cannot be stolen by "Anby: Soldier 0", and this first-
+    word pass — run last — cannot steal a key any earlier, more specific pass
+    already claimed either.
     """
     index: dict[str, AgentGuide] = {}
     for guide in guides:
@@ -85,6 +100,10 @@ def build_guide_index(guides: list[AgentGuide]) -> dict[str, AgentGuide]:
         index.setdefault(_normalise(guide.slug), guide)
     for guide in guides:
         index.setdefault(_word_set_key(guide.agent_name), guide)
+    for guide in guides:
+        first_word = _normalise(guide.agent_name).split(" ", 1)[0]
+        if first_word:
+            index.setdefault(first_word, guide)
     return index
 
 
@@ -283,6 +302,50 @@ def evaluate_teams(
     return fieldable, suggested
 
 
+def _set_demand_from_guides(
+    guides: list[AgentGuide],
+) -> tuple[dict[str, list[str]], dict[str, str]]:
+    """Which agents recommend each set, and the set's art, across every guide.
+
+    Keyed by normalised set name so `suggest_farming` and
+    `suggest_domain_coverage` (which needs the same lookup for both sets of a
+    pair) don't each re-walk every guide's disc-set list.
+
+    Art is collected from *every* row, recommended or not: a guide lists a set
+    as an alternate 2-PC option (`recommended=False`) far more often than as
+    its actual pick, and that row still carries a perfectly good icon URL —
+    skipping it just means a set with no #1 fan anywhere (e.g. Soul Rock)
+    never gets an icon at all. Demand (`set_wanted_by`) stays recommended-only,
+    since that field answers "who actually wants this", not "who mentions it".
+    """
+    set_wanted_by: dict[str, list[str]] = {}
+    set_icons: dict[str, str] = {}
+    for guide in guides:
+        for rec in guide.disc_sets:
+            key = _normalise(rec.set_name)
+            if rec.icon:
+                set_icons.setdefault(key, rec.icon)
+            if not rec.recommended:
+                continue
+            names = set_wanted_by.setdefault(key, [])
+            if guide.agent_name not in names:
+                names.append(guide.agent_name)
+    return set_wanted_by, set_icons
+
+
+def _farming_agents(
+    names: list[str], portraits: dict[str, str], owned_names: set[str]
+) -> list[FarmingAgent]:
+    return [
+        FarmingAgent(
+            name=name,
+            icon=portraits.get(_normalise(name), ""),
+            owned=_normalise(name) in owned_names,
+        )
+        for name in names
+    ]
+
+
 def suggest_farming(
     gaps: list[BuildGap],
     teams: list[TeamStatus],
@@ -306,27 +369,10 @@ def suggest_farming(
     out: list[FarmingPriority] = []
 
     # Which agents want each set, and the set's art, across every guide.
-    set_wanted_by: dict[str, list[str]] = {}
-    set_icons: dict[str, str] = {}
-    for guide in guides:
-        for rec in guide.disc_sets:
-            if not rec.recommended:
-                continue
-            key = _normalise(rec.set_name)
-            set_icons.setdefault(key, rec.icon)
-            names = set_wanted_by.setdefault(key, [])
-            if guide.agent_name not in names:
-                names.append(guide.agent_name)
+    set_wanted_by, set_icons = _set_demand_from_guides(guides)
 
     def as_agents(names: list[str]) -> list[FarmingAgent]:
-        return [
-            FarmingAgent(
-                name=name,
-                icon=portraits.get(_normalise(name), ""),
-                owned=_normalise(name) in owned_names,
-            )
-            for name in names
-        ]
+        return _farming_agents(names, portraits, owned_names)
 
     # Disc sets blocking otherwise-ready agents.
     set_demand: Counter[str] = Counter()
@@ -379,6 +425,66 @@ def suggest_farming(
     return out[:10]
 
 
+def suggest_domain_coverage(
+    guides: list[AgentGuide] | None = None,
+    portraits: dict[str, str] | None = None,
+    owned_names: set[str] | None = None,
+) -> list[DomainCoverage]:
+    """Every Routine Cleanup stage, paired, with who each one covers.
+
+    A stage drops both its sets regardless of which one you're farming for —
+    running for Polar Metal also stacks up Freedom Blues pieces for free.
+    The pairing itself is a fixed fact of the game (`domain_pairs.json`), so
+    every stage is listed unconditionally; what varies is *who currently
+    benefits*, the union of every agent either of its two sets is recommended
+    for. A pair with no cached guide yet still shows, just with no agents —
+    same "not filtered out, just empty" rule `DisksTab`'s set tiles use.
+    """
+    guides = guides or []
+    portraits = portraits or {}
+    owned_names = owned_names or set()
+    set_wanted_by, set_icons = _set_demand_from_guides(guides)
+
+    out: list[DomainCoverage] = []
+    for set_a, set_b in load_domain_pairs():
+        key_a, key_b = _normalise(set_a), _normalise(set_b)
+        wanted_a = set_wanted_by.get(key_a, [])
+        wanted_b = set_wanted_by.get(key_b, [])
+
+        seen: set[str] = set()
+        names: list[str] = []
+        for name in wanted_a + wanted_b:
+            if name not in seen:
+                seen.add(name)
+                names.append(name)
+
+        owned_count = sum(1 for n in names if _normalise(n) in owned_names)
+        if names:
+            reason = f"One stage, both sets — covers {len(names)} agent(s)"
+            reason += f", {owned_count} of them yours" if owned_count > 0 else ""
+            reason += "."
+        else:
+            reason = "One stage, both sets — no cached recommendation yet."
+
+        out.append(
+            DomainCoverage(
+                sets=[set_a, set_b],
+                icons=[set_icons.get(key_a, ""), set_icons.get(key_b, "")],
+                agents=_farming_agents(names, portraits, owned_names),
+                reason=reason,
+            )
+        )
+
+    # Most agents covered first; owned-agent coverage breaks ties, since that's
+    # the roster this run actually helps today. Stable sort keeps the db's own
+    # order among stages that tie (including the all-empty ones at the bottom).
+    out.sort(
+        key=lambda d: (len(d.agents), sum(1 for a in d.agents if a.owned)),
+        reverse=True,
+    )
+    return out
+
+
 def run_analysis(
     agents: list[Agent],
     builds: dict[int, AgentBuild],
@@ -429,5 +535,6 @@ def run_analysis(
         farming=suggest_farming(
             gaps, my_teams + suggested, guides, portraits, owned_names
         ),
+        domain_coverage=suggest_domain_coverage(guides, portraits, owned_names),
         computed_at=time.time(),
     )

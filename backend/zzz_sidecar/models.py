@@ -390,11 +390,27 @@ class FarmingPriority(BaseModel):
     agents: list[FarmingAgent] = Field(default_factory=list)
 
 
+class DomainCoverage(BaseModel):
+    """One Routine Cleanup stage: the two sets it drops together, and every
+    agent either one is recommended for — the "farm this stage, not just this
+    set" answer, since a run drops both regardless of which one you wanted.
+    """
+
+    #: Exactly 2: the stage's two possible drops.
+    sets: list[str] = Field(default_factory=list)
+    icons: list[str] = Field(default_factory=list)
+    #: Union of agents recommending either set, deduplicated, most useful
+    #: first. Un-owned agents are included on purpose, same as `FarmingPriority`.
+    agents: list[FarmingAgent] = Field(default_factory=list)
+    reason: str = ""
+
+
 class Analysis(BaseModel):
     build_gaps: list[BuildGap] = Field(default_factory=list)
     my_teams: list[TeamStatus] = Field(default_factory=list)
     suggested_teams: list[TeamStatus] = Field(default_factory=list)
     farming: list[FarmingPriority] = Field(default_factory=list)
+    domain_coverage: list[DomainCoverage] = Field(default_factory=list)
     computed_at: float = 0.0
 
 

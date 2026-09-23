@@ -223,6 +223,17 @@ def test_a_guide_is_found_by_full_name_when_the_short_name_differs():
     assert found is not None and found.agent_name == "Jane Doe"
 
 
+def test_a_guide_is_found_by_first_word_when_the_agent_has_no_full_name():
+    # The un-owned catalog source (metadata.py) never populates `full_name` -
+    # only HoYoLAB roster entries get it - so a catalog-only "Jane" has no
+    # full name to fall back to and must resolve on the short name alone.
+    jane = Agent(id=99, name="Jane", full_name="", owned=False)
+    index = build_guide_index([guide("Jane Doe")])
+
+    found = find_guide(jane, index)
+    assert found is not None and found.agent_name == "Jane Doe"
+
+
 def test_a_guide_is_found_by_slug_when_neither_name_matches():
     agent = Agent(id=98, name="Yuzuha", full_name="Ukinami Yuzuha", owned=True)
     hit = guide("Someone Else")
@@ -435,3 +446,74 @@ def test_farming_prefers_the_roster_portrait_over_a_team_row_one():
     testagent = next((a for a in everyone if a.name == "Testagent"), None)
     if testagent is not None:
         assert testagent.icon == "https://hoyolab/mine.png"
+
+
+# -- domain coverage (Farm Together) ------------------------------------------ #
+
+
+def test_farming_one_set_covers_the_agent_who_wants_its_domain_partner():
+    """Freedom Blues and Polar Metal drop from the same Routine Cleanup stage
+    (domain_pairs.json), so farming one for Velina also stacks pieces of the
+    other for Pyrois — that's the entire point of the section."""
+    guides = [
+        guide(
+            "Velina",
+            disc_sets=[
+                DiscSetRecommendation(
+                    set_name="Polar Metal", pieces=4, recommended=True, icon="https://cdn/polar.webp"
+                )
+            ],
+        ),
+        guide(
+            "Pyrois",
+            disc_sets=[
+                DiscSetRecommendation(
+                    set_name="Freedom Blues",
+                    pieces=4,
+                    recommended=True,
+                    icon="https://cdn/freedom.webp",
+                )
+            ],
+        ),
+    ]
+    agents = [agent(1, "Velina"), agent(2, "Pyrois", owned=False)]
+
+    result = run_analysis(agents, {}, guides)
+    pair = next(
+        d for d in result.domain_coverage if set(d.sets) == {"Polar Metal", "Freedom Blues"}
+    )
+
+    by_name = {a.name: a.owned for a in pair.agents}
+    assert by_name == {"Velina": True, "Pyrois": False}
+    assert set(pair.icons) == {"https://cdn/polar.webp", "https://cdn/freedom.webp"}
+
+
+def test_every_stage_in_the_db_is_listed_even_with_no_cached_recommendation():
+    """The pairing is a fixed fact of the game, not something to hide just
+    because no guide has been synced for either set yet — only the agent
+    list underneath should vary with what's cached."""
+    guides = [guide("Testagent")]  # wants "Mock Metal", which pairs with nothing real
+    result = run_analysis([agent(1, "Testagent")], {}, guides)
+
+    assert len(result.domain_coverage) == 15
+    empty = next(d for d in result.domain_coverage if set(d.sets) == {"Swing Jazz", "Chaotic Metal"})
+    assert empty.agents == []
+    assert "no cached recommendation" in empty.reason.lower()
+
+
+def test_domain_coverage_ranks_the_widest_stage_first():
+    wide_a = DiscSetRecommendation(set_name="Polar Metal", pieces=4, recommended=True)
+    wide_b = DiscSetRecommendation(set_name="Freedom Blues", pieces=4, recommended=True)
+    narrow = DiscSetRecommendation(set_name="Swing Jazz", pieces=4, recommended=True)
+    guides = [
+        guide("Velina", disc_sets=[wide_a]),
+        guide("Pyrois", disc_sets=[wide_b]),
+        guide("Anotheragent", disc_sets=[wide_b]),
+        guide("Soloagent", disc_sets=[narrow]),
+    ]
+    agents = [agent(i, name) for i, name in enumerate(["Velina", "Pyrois", "Anotheragent", "Soloagent"], 1)]
+
+    result = run_analysis(agents, {}, guides)
+
+    assert set(result.domain_coverage[0].sets) == {"Polar Metal", "Freedom Blues"}
+    assert len(result.domain_coverage[0].agents) == 3

@@ -318,3 +318,22 @@
 .farm-user.is-missing img {
   filter: grayscale(1) brightness(0.4);
 }
+
+/* --- Farm Together: paired set icons ---------------------------------------- */
+
+.coverage-pair {
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+
+.coverage-pair > :first-child {
+  position: relative;
+  z-index: 1;
+}
+
+.coverage-pair > :last-child {
+  margin-left: -14px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--ink-100);
+}
