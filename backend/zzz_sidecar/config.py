@@ -6,6 +6,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 #: Identifies this app to Prydwen. Keep the repo URL so they can contact us.
+#:
+#: Only actually sent by `HttpxTransport` (prydwen/transport.py). The default
+#: transport, `PrimpTransport`, impersonates a real Chrome browser and — this
+#: was verified against a header-echo endpoint, not assumed — ignores a
+#: `User-Agent` override in favour of its impersonation profile's own,
+#: internally consistent one. Do not describe the default transport as
+#: identifying itself this way; it doesn't.
 USER_AGENT = (
     "ZZZTeamTracker/0.1 (+https://github.com/rahbir1518/ZZZ_Personalized_Tracker; "
     "personal, non-commercial use)"
