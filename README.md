@@ -1,4 +1,4 @@
-https://github.com/user-attachments/assets/443964f0-e296-41c4-8fe8-6fba9339e224
+![ZZZ Team Tracker demo](resources/vid-small.gif)
 
 # ZZZ Team Tracker
 
