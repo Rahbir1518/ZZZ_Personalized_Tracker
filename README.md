@@ -1,4 +1,4 @@
-<video src="resources/vid.mp4" controls muted width="100%"></video>
+<video src="[resources/vid.mp4](https://github.com/user-attachments/assets/443964f0-e296-41c4-8fe8-6fba9339e224)" controls muted width="100%"></video>
 
 # ZZZ Team Tracker
 
