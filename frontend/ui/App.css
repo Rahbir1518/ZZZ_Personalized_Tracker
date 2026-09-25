@@ -6,6 +6,8 @@
   display: grid;
   grid-template-columns: 1fr auto;
   height: 100vh;
+  box-sizing: border-box;
+  padding-top: var(--titlebar-height);
 }
 
 .shell-stage {
@@ -176,6 +178,8 @@
   place-items: center;
   height: 100vh;
   padding: 24px;
+  box-sizing: border-box;
+  padding-top: calc(var(--titlebar-height) + 24px);
 }
 
 .boot-spinner {

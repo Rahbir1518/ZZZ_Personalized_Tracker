@@ -18,6 +18,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow+Semi+Condensed:wght@400;500;600;700&display=swap');
 
 :root {
+  /* Must match main/index.ts's titleBarOverlay.height — the native window
+     controls bar it recolors black. Every full-height phase root (.shell,
+     .boot, .login-screen) pads by this so content never renders underneath
+     it, and .titlebar-drag-region (below) is exactly this tall. */
+  --titlebar-height: env(titlebar-area-height, 36px);
+
   /* --- base ------------------------------------------------------------ */
   --ink-000: #050505;
   --ink-100: #0b0b0c;
@@ -87,6 +93,20 @@ html,
 body {
   margin: 0;
   height: 100%;
+}
+
+/* The Window Controls Overlay only recolors the strip the OS draws its own
+   minimize/maximize/close buttons into — it does not fill or make the rest
+   of that bar draggable. This does both, so the window still drags from
+   anywhere along the top edge like a normal title bar. Mounted outside
+   <App> (see main.tsx) so it survives every one of its phases. */
+.titlebar-drag-region {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: var(--titlebar-height);
+  background: #000;
+  -webkit-app-region: drag;
+  z-index: 1000;
 }
 
 body {

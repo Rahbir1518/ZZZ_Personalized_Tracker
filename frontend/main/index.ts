@@ -19,9 +19,21 @@ function createWindow(): void {
     minWidth: 1080,
     minHeight: 720,
     show: false,
-    backgroundColor: '#f4efe1',
+    // Matches the UI's own --ink-000 body background (styles/zzz.css) — the
+    // native window used to flash cream (#f4efe1) before the dark theme
+    // painted over it.
+    backgroundColor: '#050505',
     autoHideMenuBar: true,
     title: 'ZZZ Team Tracker',
+    // Windows Window Controls Overlay: keeps the native minimize/maximize/
+    // close buttons (unlike frame: false, which replaces them entirely) but
+    // lets their bar be recolored instead of the default white/light chrome.
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: '#000000',
+      symbolColor: '#e8e8e5',
+      height: 36
+    },
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       // Hardening: the renderer is untrusted UI code with no Node access.

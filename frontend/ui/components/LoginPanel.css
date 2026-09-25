@@ -5,6 +5,8 @@
   place-items: center;
   height: 100vh;
   padding: 24px;
+  box-sizing: border-box;
+  padding-top: calc(var(--titlebar-height) + 24px);
   overflow-y: auto;
 }
 
