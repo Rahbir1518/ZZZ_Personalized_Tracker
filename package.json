@@ -1,6 +1,6 @@
 {
   "name": "zzz-team-tracker",
-  "version": "0.1.0",
+  "version": "0.1.3",
   "description": "Local desktop tracker that cross-references your ZZZ account roster with community build recommendations.",
   "license": "MIT",
   "private": true,
