@@ -1,11 +1,12 @@
 import { ipcMain, shell } from 'electron'
 import { getSidecar } from './sidecar'
 import {
-  saveCookies,
-  loadCookies,
-  clearCookies,
-  hasCookies,
-  isEncryptionAvailable,
+  listProfiles,
+  loadProfileCookies,
+  saveProfile,
+  removeProfile,
+  deactivateProfile,
+  type AccountInfo,
   type StoredCookies
 } from './credentials'
 
@@ -21,19 +22,20 @@ export function registerIpc(): void {
     return handle
   })
 
-  ipcMain.handle('credentials:status', () => ({
-    stored: hasCookies(),
-    encryptionAvailable: isEncryptionAvailable()
-  }))
+  ipcMain.handle('profiles:list', () => listProfiles())
 
-  ipcMain.handle('credentials:save', (_event, cookies: StoredCookies) => {
-    saveCookies(cookies)
+  ipcMain.handle('profiles:load', (_event, id: string) => loadProfileCookies(String(id)))
+
+  ipcMain.handle('profiles:save', (_event, cookies: StoredCookies, account: AccountInfo) => {
+    saveProfile(cookies, account)
   })
 
-  ipcMain.handle('credentials:load', () => loadCookies())
+  ipcMain.handle('profiles:remove', (_event, id: string) => {
+    removeProfile(String(id))
+  })
 
-  ipcMain.handle('credentials:clear', () => {
-    clearCookies()
+  ipcMain.handle('profiles:deactivate', () => {
+    deactivateProfile()
   })
 
   ipcMain.handle('shell:openExternal', async (_event, url: string) => {

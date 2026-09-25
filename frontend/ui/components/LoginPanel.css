@@ -27,6 +27,139 @@
   color: var(--muted);
 }
 
+/* Shown when the launch-time auto sign-in fell through, so an expired saved
+   profile doesn't just look like a plain logout. */
+.login-notice {
+  margin: 0 0 16px;
+  padding: 9px 11px;
+  font-size: 0.85rem;
+  color: var(--paper);
+  background: var(--ink-200);
+  border-left: 3px solid var(--gold);
+}
+
+.login-profiles {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 14px;
+  padding: 0;
+  list-style: none;
+}
+
+.login-profile {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.login-profile-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 14px;
+  text-align: left;
+  color: var(--paper);
+  background: var(--ink-200);
+  border: var(--hair) solid var(--ink-400);
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  cursor: none;
+  --cursor-role: clickable;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+.login-profile-main:hover:not(:disabled) {
+  background: var(--ink-300);
+  border-color: var(--gold);
+}
+
+.login-profile-main:hover:not(:disabled) .login-profile-avatar {
+  background: var(--gold);
+  color: var(--ink-000);
+}
+
+.login-profile-main:focus-visible,
+.login-profile-forget:focus-visible {
+  outline: var(--edge) solid var(--gold);
+  outline-offset: 2px;
+}
+
+.login-profile-main:disabled,
+.login-profile-forget:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  --cursor-role: disabled;
+}
+
+.login-profile-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  font-size: 1.3rem;
+  color: var(--gold);
+  background: var(--ink-000);
+  border: var(--hair) solid var(--ink-400);
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+
+.login-profile-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.login-profile-name {
+  overflow: hidden;
+  font-size: 1.15rem;
+  color: var(--white);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.login-profile-forget {
+  flex: none;
+  min-width: 42px;
+  padding: 0 10px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  background: var(--ink-200);
+  border: var(--hair) solid var(--ink-400);
+  cursor: none;
+  --cursor-role: clickable;
+}
+
+.login-profile-forget:hover:not(:disabled),
+.login-profile-forget.is-confirming {
+  color: var(--alert);
+  border-color: var(--alert);
+}
+
+.login-profile-forget.is-confirming:hover:not(:disabled) {
+  color: var(--white);
+  background: var(--alert);
+}
+
+.login-add {
+  width: 100%;
+}
+
+.login-divider {
+  margin: 18px 0;
+  border: 0;
+  border-top: var(--hair) solid var(--ink-400);
+}
+
 .login-form {
   display: grid;
   gap: 14px;

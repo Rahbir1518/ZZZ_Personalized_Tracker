@@ -108,8 +108,10 @@ than just failing.
   (Windows DPAPI, via Electron's `safeStorage`).
 - They are never logged, never committed, and never sent anywhere except
   HoYoLAB's own domains.
-- Clearing them is one button in the app, or delete `credentials.bin` from the
-  app's user-data folder.
+- Each account signed in with "remember" ticked is saved as a profile you can
+  pick from the sign-in screen, so switching accounts needs no re-paste.
+  Logging out keeps the profile; the ✕ on its card forgets it. To wipe every
+  saved account, delete `profiles.bin` from the app's user-data folder.
 
 **Honest risk framing:** a leaked HoYoLAB cookie exposes account *data* (with
 email and phone partially masked). It cannot by itself take over your account —

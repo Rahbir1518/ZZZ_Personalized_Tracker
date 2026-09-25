@@ -10,7 +10,12 @@
   padding-top: var(--titlebar-height);
 }
 
+/* Positioned above the fixed `.backdrop` (z-index 0, opaque). Without this,
+   anything in the stage that isn't itself positioned — plain text like the
+   brand name and the account badge — paints underneath the backdrop. */
 .shell-stage {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-rows: auto auto 1fr;
   gap: 14px;
@@ -38,9 +43,24 @@
 }
 
 .brand {
-  display: flex;
-  align-items: center;
-  gap: 11px;
+  display: grid;
+  justify-items: start;
+  gap: 14px;
+}
+
+/* The faint section wordmark. In the flow of the top bar (not fixed to the
+   window like the login screen's) so it always keeps clear space between the
+   gold mark above it and the tab's controls below it. */
+.stage-word {
+  margin-bottom: 12px;
+  font-size: clamp(3rem, 12vh, 8.5rem);
+  font-weight: 800;
+  line-height: 0.82;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.05);
+  pointer-events: none;
+  user-select: none;
 }
 
 /* A cut gold wedge, not a logo. */
@@ -51,17 +71,40 @@
   clip-path: polygon(0 0, 100% 0, 100% 68%, 50% 100%, 0 68%);
 }
 
-.brand-text {
+/* Sync on top, the signed-in account under it, both hugging the right edge. */
+.topbar-end {
   display: grid;
-  gap: 1px;
+  gap: 12px;
+  justify-items: end;
+  margin-left: auto;
 }
 
-.brand-name {
-  font-size: 1.5rem;
+.account-badge {
+  display: grid;
+  justify-items: end;
+  gap: 3px;
+  padding-right: 12px;
+  border-right: var(--edge) solid var(--gold);
+  text-align: right;
+}
+
+.account-name {
+  max-width: 320px;
+  overflow: hidden;
+  font-size: 1.6rem;
   line-height: 1;
   color: var(--white);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
+/* Scoped under the badge so it outranks the shared `.tech` size — zzz.css is
+   imported after this file, so a bare `.account-meta` loses the tie. */
+.account-badge .account-meta {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--white);
+}
 
 /* --- vertical rail ------------------------------------------------------ */
 

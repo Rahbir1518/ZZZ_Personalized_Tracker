@@ -1,6 +1,6 @@
 .sync {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   justify-items: end;
   margin-left: auto;
 }
@@ -13,7 +13,9 @@
 }
 
 .sync-button {
-  min-width: 112px;
+  min-width: 140px;
+  padding: 10px 22px;
+  font-size: 1.1rem;
 }
 
 .sync-celebrate {
@@ -34,7 +36,7 @@
 
 .sync-sources {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -44,9 +46,9 @@
   display: flex;
   gap: 6px;
   align-items: baseline;
-  padding: 2px 8px;
+  padding: 4px 10px;
   font-family: var(--font-tech);
-  font-size: 0.62rem;
+  font-size: 0.78rem;
   letter-spacing: 0.08em;
   background: var(--ink-200);
   border: var(--hair) solid var(--ink-300);
@@ -55,11 +57,11 @@
 .sync-source-name {
   font-weight: 700;
   text-transform: uppercase;
-  color: var(--paper-dim);
+  color: var(--white);
 }
 
 .sync-source-detail {
-  color: var(--muted);
+  color: var(--paper-dim);
 }
 
 .sync-source-ok {
@@ -97,10 +99,10 @@
 .sync-quota {
   margin: 0;
   font-family: var(--font-tech);
-  font-size: 0.66rem;
+  font-size: 0.8rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--paper);
 }
 
 .sync-quota-spent {
@@ -111,8 +113,8 @@
   margin: 0;
   max-width: 34ch;
   text-align: right;
-  font-size: 0.72rem;
-  color: var(--muted);
+  font-size: 0.82rem;
+  color: var(--paper);
 }
 
 .sync-note-error {

@@ -75,6 +75,10 @@ function Dialog({
           >
             Log out
           </button>
+          <p className="settings-note">
+            Remembered accounts stay on this computer — pick any of them on the sign-in screen to
+            switch.
+          </p>
         </Panel>
       </motion.div>
     </div>

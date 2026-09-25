@@ -16,7 +16,7 @@ import { SyncButton } from './components/SyncButton'
 import { CharactersTab } from './tabs/CharactersTab'
 import { DisksTab } from './tabs/DisksTab'
 import { TeamsTab } from './tabs/TeamsTab'
-import type { Agent, Analysis } from './types'
+import type { Agent, Analysis, AuthResult } from './types'
 import './App.css'
 
 type Tab = 'characters' | 'teams' | 'disks'
@@ -28,8 +28,13 @@ const TABS: { id: Tab; label: string; code: string }[] = [
   { id: 'disks', label: 'Disks', code: 'R-03' }
 ]
 
-/** The layered, low-contrast background. Purely decorative. */
-function Backdrop({ word }: { word: string }): React.JSX.Element {
+/**
+ * The layered, low-contrast background. Purely decorative. `word` is the
+ * fixed oversized wordmark; the main shell omits it and sets its section
+ * word in the top bar instead, where layout can keep it clear of the
+ * controls around it.
+ */
+function Backdrop({ word }: { word?: string }): React.JSX.Element {
   return (
     <>
       <div className="backdrop" />
@@ -38,9 +43,11 @@ function Backdrop({ word }: { word: string }): React.JSX.Element {
         <span className="ring-b" />
         <span className="slab" />
       </div>
-      <div className="backdrop-word display" aria-hidden="true">
-        {word}
-      </div>
+      {word !== undefined && (
+        <div className="backdrop-word display" aria-hidden="true">
+          {word}
+        </div>
+      )}
     </>
   )
 }
@@ -98,21 +105,33 @@ export function App(): React.JSX.Element {
     }
   }, [])
 
+  // Why the launch-time auto sign-in fell through to the login screen, if it
+  // did — shown there so a saved profile with expired cookies doesn't just
+  // silently look logged out.
+  const [autoLoginFailure, setAutoLoginFailure] = useState<string | null>(null)
+  // Who is signed in, shown under Sync so two accounts' rosters are never
+  // mistaken for each other.
+  const [account, setAccount] = useState<AuthResult | null>(null)
+
   /**
-   * Drops the sidecar's session and the saved cookies, then hands back to
-   * the login screen — the one path to signing in as a different account.
+   * Drops the sidecar's session and hands back to the login screen, which
+   * doubles as the account switcher. The saved profile is kept (forgetting
+   * one is a separate action on its card); it just stops being the one the
+   * next launch signs in as automatically.
    *
    * Best-effort on the sidecar call: a session that is already gone (sidecar
-   * restarted, cookies expired) must not block clearing the local copy, or
-   * the person is stuck unable to log back in as anyone.
+   * restarted, cookies expired) must not block leaving it, or the person is
+   * stuck unable to log back in as anyone.
    */
   const logout = useCallback(async () => {
     try {
       await api.logout()
     } catch {
-      // Nothing left to log out of server-side; still clear the local copy.
+      // Nothing left to log out of server-side; still leave locally.
     }
-    await window.tracker.credentials.clear()
+    await window.tracker.profiles.deactivate()
+    setAutoLoginFailure(null)
+    setAccount(null)
     setAgents([])
     setAnalysis(null)
     setError(null)
@@ -128,16 +147,28 @@ export function App(): React.JSX.Element {
         return
       }
 
+      let profileName = ''
       try {
-        const stored = await window.tracker.credentials.load()
-        if (stored === null) {
+        const { profiles, active } = await window.tracker.profiles.list()
+        const profile = profiles.find((p) => p.id === active)
+        const stored = active === null ? null : await window.tracker.profiles.load(active)
+        if (profile === undefined || stored === null) {
           setPhase('needs-login')
           return
         }
-        await api.login(stored as unknown as Record<string, string>)
+        profileName = profile.nickname || `account ${profile.id}`
+        const result = await api.login(stored as unknown as Record<string, string>)
+        // Refreshes the card's nickname/level, and fills them in for a
+        // profile migrated from the old single-account store.
+        await window.tracker.profiles.save(stored, result)
+        setAccount(result)
         setPhase('ready')
         await loadData()
-      } catch {
+      } catch (err) {
+        if (profileName !== '') {
+          const reason = err instanceof ApiError ? err.message : String(err)
+          setAutoLoginFailure(`Couldn't sign in as ${profileName} automatically. ${reason}`)
+        }
         setPhase('needs-login')
       }
     })()
@@ -176,7 +207,10 @@ export function App(): React.JSX.Element {
       <>
         <Backdrop word="AUTH" />
         <LoginPanel
-          onAuthenticated={() => {
+          notice={autoLoginFailure}
+          onAuthenticated={(result) => {
+            setAutoLoginFailure(null)
+            setAccount(result)
             setPhase('ready')
             void loadData()
           }}
@@ -189,19 +223,32 @@ export function App(): React.JSX.Element {
 
   return (
     <div className="shell">
-      <Backdrop word={tab === 'characters' ? 'AGENTS' : tab === 'teams' ? 'TEAMS' : 'DISKS'} />
+      <Backdrop />
 
       <div className="shell-stage">
         <header className="topbar">
           <div className="brand">
             <span className="brand-mark" aria-hidden="true" />
-            <div className="brand-text">
-              <span className="display brand-name">ZZZ Tracker</span>
-              <Tech>Agent progression</Tech>
-            </div>
+            <span className="stage-word display" aria-hidden="true">
+              {tab === 'characters' ? 'AGENTS' : tab === 'teams' ? 'TEAMS' : 'DISKS'}
+            </span>
           </div>
 
-          <SyncButton onFinished={() => void loadData()} />
+          <div className="topbar-end">
+            <SyncButton onFinished={() => void loadData()} />
+            {account !== null && (
+              <div className="account-badge" title="Signed-in account">
+                <span className="display account-name">
+                  {account.nickname || 'HoYoLAB account'}
+                </span>
+                <Tech className="account-meta">
+                  {[account.uid !== '' && `UID ${account.uid}`, account.region]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </Tech>
+              </div>
+            )}
+          </div>
         </header>
 
         {error !== null && (

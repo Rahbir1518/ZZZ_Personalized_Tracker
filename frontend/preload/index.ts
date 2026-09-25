@@ -12,8 +12,20 @@ export interface StoredCookies {
   account_id_v2?: string
 }
 
-export interface CredentialStatus {
-  stored: boolean
+export interface ProfileMeta {
+  id: string
+  uid: string
+  nickname: string
+  level: number
+  region: string
+  lastUsedAt: number
+}
+
+export type AccountInfo = Pick<ProfileMeta, 'uid' | 'nickname' | 'level' | 'region'>
+
+export interface ProfileList {
+  profiles: ProfileMeta[]
+  active: string | null
   encryptionAvailable: boolean
 }
 
@@ -25,12 +37,13 @@ const api = {
   sidecar: {
     info: (): Promise<SidecarInfo> => ipcRenderer.invoke('sidecar:info')
   },
-  credentials: {
-    status: (): Promise<CredentialStatus> => ipcRenderer.invoke('credentials:status'),
-    save: (cookies: StoredCookies): Promise<void> =>
-      ipcRenderer.invoke('credentials:save', cookies),
-    load: (): Promise<StoredCookies | null> => ipcRenderer.invoke('credentials:load'),
-    clear: (): Promise<void> => ipcRenderer.invoke('credentials:clear')
+  profiles: {
+    list: (): Promise<ProfileList> => ipcRenderer.invoke('profiles:list'),
+    load: (id: string): Promise<StoredCookies | null> => ipcRenderer.invoke('profiles:load', id),
+    save: (cookies: StoredCookies, account: AccountInfo): Promise<void> =>
+      ipcRenderer.invoke('profiles:save', cookies, account),
+    remove: (id: string): Promise<void> => ipcRenderer.invoke('profiles:remove', id),
+    deactivate: (): Promise<void> => ipcRenderer.invoke('profiles:deactivate')
   },
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('shell:openExternal', url)
 }
