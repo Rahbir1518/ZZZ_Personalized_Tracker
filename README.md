@@ -1,3 +1,5 @@
+<video src="resources/vid.mp4" controls muted width="100%"></video>
+
 # ZZZ Team Tracker
 
 A local desktop app for **Zenless Zone Zero**. It signs in to *your own* HoYoLAB
