@@ -1,6 +1,6 @@
 /**
- * Pulls tab: per-channel pity and luck, then every S-rank obtained and how
- * many pulls it took.
+ * Pulls tab: one tile per Signal Search channel; opening a tile shows that
+ * channel's pity and luck, and every S-rank it gave and how many pulls it took.
  *
  * The data is the local pull log the sidecar keeps (see services/pulls.py).
  * It is fetched from HoYoLAB on Sync, never leaves this machine, and is never
@@ -11,7 +11,10 @@ import { useMemo, useState } from 'react'
 import encryptedTapeArt from '@resources/Item_Encrypted_Master_Tape.png'
 import masterTapeArt from '@resources/Item_Master_Tape.png'
 import booponArt from '@resources/Item_Boopon.png'
-import { EmptyState, Portrait, Tech } from '../components/Ui'
+import exclusiveBanner from '@resources/exclusive.webp'
+import stableBanner from '@resources/stable.webp'
+import bangbooBanner from '@resources/bangboo.webp'
+import { EmptyState, Portrait, RankBadge, Tech } from '../components/Ui'
 import type { Agent, PoolStats, PullHistory, SRankPull } from '../types'
 import './PullsTab.css'
 
@@ -257,10 +260,161 @@ function PullCard({
   )
 }
 
+// --- channel tiles (overview) ------------------------------------------------------
+
+const CHANNEL_NAME: Record<string, string> = {
+  exclusive: 'Exclusive Channel',
+  wengine: 'W-Engine Channel',
+  standard: 'Stable Channel',
+  bangboo: 'Bangboo Channel'
+}
+
+/**
+ * Official HoYoverse wallpapers, used as channel-tile banners under the ZZZ
+ * Fan Creations Guide (non-commercial fan use; see the README's legal
+ * statement). `focus` is the object-position that keeps faces in frame when
+ * the 16:9 wallpaper is cropped to the 2:1 tile. W-Engine has none, so it
+ * shows The Brimstone instead.
+ */
+const CHANNEL_BANNER: Record<string, { src: string; focus: string }> = {
+  exclusive: { src: exclusiveBanner, focus: '50% 30%' },
+  standard: { src: stableBanner, focus: '50% 28%' },
+  bangboo: { src: bangbooBanner, focus: '50% 38%' }
+}
+
+/** Which banners each channel folds in, since pity is shared across them. */
+const CHANNEL_NOTE: Record<string, string> = {
+  exclusive: 'Includes Exclusive Rescreening, which shares its pity.',
+  wengine: 'Includes W-Engine Reverberation, which shares its pity.'
+}
+
+type ThumbKind = 'banner' | 'portrait' | 'item'
+
+function ChannelTile({
+  stats,
+  thumb,
+  kind,
+  focus,
+  onOpen
+}: {
+  stats: PoolStats
+  thumb: string
+  /** Wallpaper / agent portrait are cropped to fill; an item icon is shown whole. */
+  kind: ThumbKind
+  /** object-position for cropped art. */
+  focus?: string
+  onOpen: () => void
+}): React.JSX.Element {
+  const limited = stats.pool === 'exclusive' || stats.pool === 'wengine'
+  const currency = POOL_CURRENCY[stats.pool] ?? encryptedTapeArt
+  const name = CHANNEL_NAME[stats.pool] ?? stats.pool
+
+  const summary =
+    stats.total_pulls === 0
+      ? 'No pulls on record'
+      : stats.s_count === 0
+        ? 'No S-ranks yet'
+        : `${stats.s_count} S-rank${stats.s_count === 1 ? '' : 's'}` +
+          (stats.average_s !== null ? ` · ${stats.average_s} avg` : '') +
+          (limited ? (stats.guaranteed ? ' · Next is guaranteed' : ' · Next is 50/50') : '')
+
+  return (
+    <button type="button" className="chan-tile" onClick={onOpen} aria-label={`${name}: view details`}>
+      <span className={`chan-thumb is-${kind}`}>
+        <img
+          src={thumb || currency}
+          alt=""
+          draggable={false}
+          loading="lazy"
+          style={focus !== undefined ? { objectPosition: focus } : undefined}
+        />
+        <span className="chan-thumb-scrim" aria-hidden="true" />
+        <span className="chan-counters">
+          <span className="chan-counter" title="Total pulls">
+            <img className="chan-currency" src={currency} alt="" draggable={false} />
+            {stats.total_pulls.toLocaleString()}
+          </span>
+          <span className="chan-counter is-s" title="S-Rank pity">
+            <RankBadge rank="S" size={26} />
+            {stats.since_last_s}/{stats.hard_pity}
+          </span>
+          <span className="chan-counter is-a" title="A-Rank pity">
+            <RankBadge rank="A" size={26} />
+            {stats.since_last_a}/10
+          </span>
+        </span>
+      </span>
+      <span className="chan-body">
+        <span className="display chan-name">{name}</span>
+        <span className="chan-summary">{summary}</span>
+        <span className="chan-cta">View details</span>
+      </span>
+    </button>
+  )
+}
+
+// --- channel detail ---------------------------------------------------------------
+
+function ChannelDetail({
+  stats,
+  pulls,
+  byId,
+  byName,
+  onBack
+}: {
+  stats: PoolStats
+  /** This pool's S-ranks, newest first. */
+  pulls: SRankPull[]
+  byId: Map<number, Agent>
+  byName: Map<string, Agent>
+  onBack: () => void
+}): React.JSX.Element {
+  const name = CHANNEL_NAME[stats.pool] ?? stats.pool
+  return (
+    <div className="pulls-scroll">
+      <div className="pulls-bar">
+        <button type="button" className="btn pulls-back" onClick={onBack}>
+          ← Channels
+        </button>
+        <h2 className="display pulls-title">{name}</h2>
+        {CHANNEL_NOTE[stats.pool] !== undefined && (
+          <Tech className="pulls-note">{CHANNEL_NOTE[stats.pool]}</Tech>
+        )}
+      </div>
+
+      <div className="chan-detail">
+        <ChannelCard stats={stats} history={pulls.slice().reverse()} />
+
+        <div className="chan-history">
+          <h3 className="display pulls-subtitle">S-Rank History</h3>
+          {pulls.length === 0 ? (
+            <EmptyState title="No S-ranks yet">
+              {stats.total_pulls > 0
+                ? `${stats.total_pulls} pulls on record in this channel, none of them an S-rank so far.`
+                : 'No pulls on record in this channel. Press Sync to fetch them.'}
+            </EmptyState>
+          ) : (
+            <ul className="pulls-grid">
+              {pulls.map((pull) => (
+                <PullCard
+                  key={pull.id}
+                  pull={pull}
+                  hardPity={stats.hard_pity}
+                  agent={byId.get(pull.item_id) ?? byName.get(pull.name.trim().toLowerCase())}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // --- tab ------------------------------------------------------------------------
 
 export function PullsTab({ pulls, agents, loading }: Props): React.JSX.Element {
-  const [filter, setFilter] = useState<string>('all')
+  const [openPool, setOpenPool] = useState<string | null>(null)
 
   const byId = useMemo(() => new Map(agents.map((a) => [a.id, a])), [agents])
   const byName = useMemo(
@@ -276,21 +430,35 @@ export function PullsTab({ pulls, agents, loading }: Props): React.JSX.Element {
     )
   }
 
-  if (pulls.total_pulls === 0) {
+  const open = pulls.pools.find((p) => p.pool === openPool)
+  if (open !== undefined) {
     return (
       <div className="pulls">
-        <EmptyState title="No pull history yet">
-          Press Sync to fetch your Signal Search history from HoYoLAB. It is stored only on this
-          computer.
-        </EmptyState>
+        <ChannelDetail
+          stats={open}
+          pulls={pulls.s_ranks.filter((s) => s.pool === open.pool)}
+          byId={byId}
+          byName={byName}
+          onBack={() => setOpenPool(null)}
+        />
       </div>
     )
   }
 
-  const activePools = pulls.pools.filter((p) => p.total_pulls > 0)
-  const hardPity = new Map(pulls.pools.map((p) => [p.pool, p.hard_pity]))
-  const poolsWithS = activePools.filter((p) => p.s_count > 0).map((p) => p.pool)
-  const shown = filter === 'all' ? pulls.s_ranks : pulls.s_ranks.filter((s) => s.pool === filter)
+  // Bundled official wallpapers first. W-Engine has none and uses The
+  // Brimstone's art from the sidecar; failing that, an agent channel falls
+  // back to Ellen's portrait and an item channel to its currency icon.
+  const ellen = byName.get('ellen')
+  const ellenArt = ellen?.card_icon || ellen?.square_icon || ''
+  const thumbFor = (pool: string): { src: string; kind: ThumbKind; focus?: string } => {
+    const banner = CHANNEL_BANNER[pool]
+    if (banner !== undefined) return { src: banner.src, kind: 'banner', focus: banner.focus }
+    if (pool === 'exclusive' || pool === 'standard') {
+      return { src: ellenArt, kind: ellenArt !== '' ? 'portrait' : 'item' }
+    }
+    return { src: pulls.art[pool] ?? '', kind: 'item' }
+  }
+
   const polychrome = pulls.pools.reduce((sum, p) => sum + p.polychrome, 0)
 
   return (
@@ -314,52 +482,28 @@ export function PullsTab({ pulls, agents, loading }: Props): React.JSX.Element {
           </div>
         </div>
 
-        <div className="channels">
-          {activePools.map((stats) => (
-            <ChannelCard
-              key={stats.pool}
-              stats={stats}
-              history={pulls.s_ranks.filter((s) => s.pool === stats.pool).slice().reverse()}
-            />
-          ))}
-        </div>
-
-        <div className="pulls-history-bar">
-          <h3 className="display pulls-subtitle">S-Rank History</h3>
-          {poolsWithS.length > 1 && (
-            <div className="pulls-filters" role="tablist" aria-label="Channel">
-              {['all', ...poolsWithS].map((pool) => (
-                <button
-                  key={pool}
-                  type="button"
-                  role="tab"
-                  aria-selected={filter === pool}
-                  className={`btn pulls-filter ${filter === pool ? 'btn-active' : ''}`}
-                  onClick={() => setFilter(pool)}
-                >
-                  {pool === 'all' ? 'All' : (POOL_LABEL[pool] ?? pool)}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {shown.length === 0 ? (
-          <EmptyState title="No S-ranks yet">
-            {pulls.total_pulls} pulls on record, none of them an S-rank so far.
-          </EmptyState>
-        ) : (
-          <ul className="pulls-grid">
-            {shown.map((pull) => (
-              <PullCard
-                key={pull.id}
-                pull={pull}
-                hardPity={hardPity.get(pull.pool) ?? 90}
-                agent={byId.get(pull.item_id) ?? byName.get(pull.name.trim().toLowerCase())}
-              />
-            ))}
-          </ul>
+        {pulls.total_pulls === 0 && (
+          <p className="pulls-hint">
+            No pull history yet. Press Sync to fetch your Signal Search history from HoYoLAB. It
+            is stored only on this computer.
+          </p>
         )}
+
+        <div className="chan-grid">
+          {pulls.pools.map((stats) => {
+            const thumb = thumbFor(stats.pool)
+            return (
+              <ChannelTile
+                key={stats.pool}
+                stats={stats}
+                thumb={thumb.src}
+                kind={thumb.kind}
+                focus={thumb.focus}
+                onOpen={() => setOpenPool(stats.pool)}
+              />
+            )
+          })}
+        </div>
       </div>
     </div>
   )

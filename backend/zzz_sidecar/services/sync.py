@@ -45,6 +45,14 @@ SOURCE_ACCOUNT = "account"
 SOURCE_METADATA = "metadata"
 SOURCE_GUIDES = "guides"
 SOURCE_PULLS = "pulls"
+
+#: Pulls-tab channel thumbnails that are items, as casefolded names to look up
+#: in the cached icon map. Agent channels use Ellen's portrait, which the UI
+#: already has from the roster. The Bangboo is "Butler" in HoYoLAB's data.
+_CHANNEL_ART: dict[str, tuple[str, ...]] = {
+    "wengine": ("the brimstone",),
+    "bangboo": ("butler", "butlerboo"),
+}
 _SOURCES = (SOURCE_ACCOUNT, SOURCE_PULLS, SOURCE_METADATA, SOURCE_GUIDES)
 
 
@@ -94,9 +102,14 @@ class SyncService:
         if not self._hoyolab.uid:
             return PullHistory()
         agent_ids = {a.id for a in self._agents}
-        return build_pull_history(
-            self._cache.get_pulls(self._hoyolab.uid), agent_ids, self._item_icons()
-        )
+        icons = self._item_icons()
+        history = build_pull_history(self._cache.get_pulls(self._hoyolab.uid), agent_ids, icons)
+        history.art = {
+            pool: icon
+            for pool, names in _CHANNEL_ART.items()
+            if (icon := next((icons[n] for n in names if icons.get(n)), ""))
+        }
+        return history
 
     def _item_icons(self) -> dict[str, str]:
         """W-Engine / Bangboo name -> art, from what is already cached: the

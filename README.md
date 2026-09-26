@@ -250,8 +250,16 @@ Whichever you have set last (env var takes priority over `.env` if both exist) i
 
 The `.gitignore` covers this from the start, but to be explicit — the repo
 contains **no** cookies or credential files, **no** UIDs or account dumps, **no**
-cache database or fetched JSON/HTML, and **no** game art or Prydwen assets.
-Icons are fetched at runtime. The app ships empty and populates itself.
+cache database or fetched JSON/HTML, and **no** Prydwen assets. Agent portraits
+and most icons are fetched at runtime; the app ships empty and populates itself.
+
+The one exception is a small set of official HoYoverse art in `resources/`,
+bundled as part of the interface under the Fan Creations Guide (see
+[Game art and legal statement](#game-art-and-legal-statement)):
+
+- `S_rank.png`, `A_rank.png`: rank badges
+- `Item_Encrypted_Master_Tape.png`, `Item_Master_Tape.png`, `Item_Boopon.png`: Signal Search currency icons
+- `exclusive.webp`, `stable.webp`, `bangboo.webp`: official wallpapers, used as Pulls-tab channel banners
 
 The checked-in parser fixture is **synthetic** — invented agent and set names in
 real DOM shape — for the same reason.
@@ -262,6 +270,20 @@ real DOM shape — for the same reason.
 
 [MIT](LICENSE). That covers **this code only** — not the upstream game data,
 recommendations, or artwork, which belong to their respective owners.
+
+### Game art and legal statement
+
+This is a free, non-commercial **fan creation**. It is not an official product
+and is not endorsed by HoYoverse. Zenless Zone Zero art and assets are used
+under HoYoverse's
+[Zenless Zone Zero Fan Creations Guide](https://www.hoyolab.com/article/30075725),
+which permits non-commercial personal fan use; that permission is not a
+licence, and HoYoverse may withdraw it at any time. If asked to remove any of
+it, it will be removed. None of this art may be reused for commercial purposes.
+
+Zenless Zone Zero © All rights reserved by miHoYo. Other properties and any
+right, title, and interest thereof and therein (intellectual property rights
+included) not derived from Zenless Zone Zero belong to their respective owners.
 
 Built on [`genshin.py`](https://github.com/seriaati/genshin.py) and
 [`hakushin-py`](https://github.com/seriaati/hakushin-py) by seriaati.

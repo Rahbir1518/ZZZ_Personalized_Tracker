@@ -480,6 +480,10 @@ class PullHistory(BaseModel):
     s_ranks: list[SRankPull] = Field(default_factory=list)
     pools: list[PoolStats] = Field(default_factory=list)
     total_pulls: int = 0
+    #: Channel-tile thumbnails for pools whose art is an item rather than an
+    #: agent portrait: "wengine" (The Brimstone), "bangboo" (Butler). Empty
+    #: when that art isn't cached; the UI falls back to the currency icon.
+    art: dict[str, str] = Field(default_factory=dict)
 
 
 class SourceProgress(BaseModel):

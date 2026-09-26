@@ -378,6 +378,8 @@ export interface PullHistory {
   s_ranks: SRankPull[]
   pools: PoolStats[]
   total_pulls: number
+  /** Channel-tile art for item channels ('wengine', 'bangboo'), when cached. */
+  art: Record<string, string>
 }
 
 export type ApiErrorCode =
