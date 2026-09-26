@@ -15,6 +15,7 @@ from pathlib import Path
 import uvicorn
 
 from .config import configure
+from .watchdog import exit_with_parent
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -54,7 +55,16 @@ def main(argv: list[str] | None = None) -> int:
         default="",
         help="Bearer token for --browser-fetch-origin.",
     )
+    parser.add_argument(
+        "--parent-pid",
+        type=int,
+        default=0,
+        help="Exit as soon as this process does. Electron passes its own PID.",
+    )
     args = parser.parse_args(argv)
+
+    if args.parent_pid > 0:
+        exit_with_parent(args.parent_pid)
 
     configure(
         port=args.port,

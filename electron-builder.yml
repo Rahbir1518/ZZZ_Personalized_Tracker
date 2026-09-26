@@ -38,6 +38,8 @@ nsis:
   deleteAppDataOnUninstall: false
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico
+  # Stops a leftover backend process before files are copied; see the file.
+  include: build/installer.nsh
 
 # Where Settings -> "Check for updates" looks. `npm run dist` still never
 # uploads anything (--publish never); it just writes latest.yml next to the

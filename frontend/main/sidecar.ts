@@ -160,6 +160,11 @@ export async function startSidecar(): Promise<SidecarHandle> {
       token,
       '--data-dir',
       app.getPath('userData'),
+      // The sidecar exits on its own when this process does, so a crash or a
+      // Task Manager kill of the app can't leave it orphaned (stopSidecar
+      // only runs on a normal quit).
+      '--parent-pid',
+      String(process.pid),
       ...transportArgs
     ],
     {
