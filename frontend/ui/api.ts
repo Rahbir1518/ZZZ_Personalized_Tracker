@@ -17,6 +17,7 @@ import type {
   DiscSetDetail,
   DiscSetOverview,
   EngineDetail,
+  PullHistory,
   SyncStatus
 } from './types'
 
@@ -98,6 +99,9 @@ export const api = {
   agentDetail: (id: number): Promise<AgentDetail> => request(`/agents/${id}`),
 
   analysis: (): Promise<Analysis> => request('/analysis'),
+
+  /** S-rank agents and pulls each took, from the local pull log. */
+  pulls: (): Promise<PullHistory> => request('/pulls'),
 
   engine: (name: string): Promise<EngineDetail> =>
     request(`/engines?name=${encodeURIComponent(name)}`),

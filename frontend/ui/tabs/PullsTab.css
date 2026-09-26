@@ -1,0 +1,461 @@
+.pulls {
+  height: 100%;
+  min-height: 0;
+}
+
+.pulls-scroll {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+  height: 100%;
+  overflow-y: auto;
+  padding-right: 6px;
+  padding-bottom: 24px;
+}
+
+/* --- bar ------------------------------------------------------------------ */
+
+.pulls-bar,
+.pulls-history-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px 28px;
+  flex-wrap: wrap;
+}
+
+.pulls-title {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: 0.02em;
+  color: var(--white);
+}
+
+.pulls-subtitle {
+  margin: 6px 0 0;
+  font-size: 1.25rem;
+  letter-spacing: 0.02em;
+  color: var(--white);
+}
+
+.pulls-stats {
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.pulls-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.pulls-stat-n {
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--white);
+}
+
+.pulls-stat .tech {
+  color: var(--paper-dim);
+}
+
+/* Flush segmented control, like the roster's filters. */
+.pulls-filters {
+  display: flex;
+  margin-left: auto;
+}
+
+.pulls-filter {
+  clip-path: none;
+  padding: 7px 16px;
+  font-size: 0.82rem;
+  border-right-width: 0;
+}
+
+.pulls-filter:last-child {
+  border-right-width: var(--hair);
+}
+
+/* --- channel cards ---------------------------------------------------------- */
+
+.channels {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 14px;
+}
+
+.channel {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  padding: 14px 16px 16px;
+  background: var(--ink-200);
+  border: var(--hair) solid var(--ink-400);
+  border-top: var(--edge) solid var(--gold);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+}
+
+.channel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.channel-name {
+  margin: 0;
+  font-size: 1.2rem;
+  letter-spacing: 0.04em;
+  color: var(--white);
+}
+
+.channel-flag {
+  padding: 2px 8px;
+  font-family: var(--font-tech);
+  font-weight: 700;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+  border: var(--hair) solid var(--ink-400);
+}
+
+.channel-flag.is-guaranteed {
+  color: var(--ink-000);
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.channel-pity {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+}
+
+.channel-pity-n {
+  font-size: 2.8rem;
+  line-height: 0.9;
+  color: var(--white);
+}
+
+.channel-pity-of {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--paper-dim);
+}
+
+.channel-pity-label {
+  color: var(--paper-dim);
+}
+
+.channel-a {
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: var(--paper-dim);
+}
+
+.channel-a b {
+  color: var(--white);
+}
+
+.channel-meter {
+  height: 6px;
+  background: var(--ink-000);
+  border: var(--hair) solid var(--ink-400);
+}
+
+.channel-meter-fill {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+}
+
+.channel-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px 12px;
+  margin: 0;
+}
+
+.channel-stats div {
+  display: grid;
+  gap: 1px;
+}
+
+.channel-stat-wide {
+  grid-column: 1 / -1;
+}
+
+.channel-stats dt {
+  font-family: var(--font-tech);
+  font-weight: 600;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.channel-stats dd {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--white);
+}
+
+.channel-rate {
+  margin-left: 4px;
+  font-size: 0.9rem;
+  color: var(--paper-dim);
+}
+
+/* --- sparkbars -------------------------------------------------------------- */
+
+.spark {
+  display: grid;
+  gap: 6px;
+  margin: 2px 0 0;
+}
+
+.spark-plot {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 56px;
+  padding-bottom: 1px;
+  border-bottom: var(--hair) solid var(--ink-400);
+}
+
+/* Full-height hit target, wider than the bar it holds. */
+.spark-slot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  flex: 1 1 0;
+  max-width: 18px;
+  height: 100%;
+}
+
+.spark-bar {
+  width: 100%;
+  max-width: 10px;
+  border-radius: 4px 4px 0 0;
+  background: var(--paper-dim);
+}
+
+.spark-slot:hover .spark-bar {
+  outline: var(--hair) solid var(--white);
+  outline-offset: 1px;
+}
+
+.result-won {
+  --result: var(--good);
+}
+
+.result-lost {
+  --result: var(--alert);
+}
+
+.result-guaranteed {
+  --result: var(--gold);
+}
+
+.spark-bar.result-won,
+.spark-bar.result-guaranteed {
+  background: var(--result);
+}
+
+/* Lost is hatched as well as red, so it never relies on colour alone. */
+.spark-bar.result-lost {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--alert) 0 3px,
+    color-mix(in srgb, var(--alert) 45%, var(--ink-200)) 3px 5px
+  );
+}
+
+.spark-legend {
+  display: flex;
+  gap: 12px;
+  font-family: var(--font-tech);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+}
+
+.spark-key {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.spark-key::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--result);
+}
+
+.spark-key.result-lost::before {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--alert) 0 2px,
+    color-mix(in srgb, var(--alert) 45%, var(--ink-200)) 2px 3px
+  );
+}
+
+/* --- history grid ------------------------------------------------------------ */
+
+.pulls-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 18px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pull-card {
+  display: grid;
+  gap: 8px;
+}
+
+/* Tape × count, above the portrait. */
+.pull-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 8px;
+  color: var(--white);
+  background: var(--ink-200);
+  border: var(--hair) solid var(--ink-400);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+
+.pull-tape {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.pull-x {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--paper-dim);
+}
+
+.pull-n {
+  min-width: 2ch;
+  font-size: 1.9rem;
+  line-height: 1;
+}
+
+.pull-count.is-lucky {
+  border-color: color-mix(in srgb, var(--good) 55%, var(--ink-400));
+}
+
+.pull-count.is-lucky .pull-n {
+  color: var(--good);
+}
+
+.pull-count.is-unlucky {
+  border-color: color-mix(in srgb, var(--alert) 55%, var(--ink-400));
+}
+
+.pull-count.is-unlucky .pull-n {
+  color: var(--alert);
+}
+
+/* Portrait, in the same register as the roster tiles. */
+.pull-art {
+  position: relative;
+  aspect-ratio: 374 / 512;
+  overflow: hidden;
+  background: var(--ink-200);
+  border: var(--hair) solid var(--ink-300);
+  border-top: var(--edge) solid var(--gold);
+}
+
+.pull-art img,
+.pull-art .portrait-blank {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+}
+
+/* W-Engine / Bangboo art is a square item icon, not a portrait: shown whole,
+   centred, on a faint radial so it doesn't float in an empty frame. */
+.pull-art.is-item {
+  background: radial-gradient(circle at 50% 42%, var(--ink-300), var(--ink-200) 70%);
+}
+
+.pull-art.is-item img {
+  object-fit: contain;
+  object-position: center 40%;
+  padding: 14% 12% 30%;
+  box-sizing: border-box;
+}
+
+.pull-art .portrait-blank {
+  display: grid;
+  place-items: center;
+  font-size: 2.4rem;
+  color: var(--muted);
+}
+
+.pull-scrim {
+  position: absolute;
+  inset: 55% 0 0;
+  background: linear-gradient(180deg, transparent, rgba(5, 5, 5, 0.92));
+  pointer-events: none;
+}
+
+.pull-result {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 2px 7px;
+  font-family: var(--font-tech);
+  font-weight: 700;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-000);
+  background: var(--result);
+}
+
+.pull-result.result-lost {
+  color: var(--white);
+}
+
+.pull-strip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+}
+
+.pull-name {
+  overflow: hidden;
+  font-size: 1.15rem;
+  line-height: 1;
+  color: var(--white);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pull-strip .tech {
+  color: var(--paper-dim);
+}

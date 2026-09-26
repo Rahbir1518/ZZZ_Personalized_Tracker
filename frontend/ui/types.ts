@@ -337,6 +337,49 @@ export interface AgentDetail {
 }
 
 /** Error codes the sidecar returns; the UI branches on these, never on text. */
+/** One S-rank obtained from Signal Search, and what it cost. */
+export interface SRankPull {
+  id: number
+  item_id: number
+  name: string
+  kind: 'agent' | 'engine' | 'bangboo'
+  /** Art for non-agents; agents' portraits come from the roster. */
+  icon: string
+  /** 'exclusive' | 'wengine' | 'standard' | 'bangboo'. */
+  pool: string
+  /** Pulls since the previous S-rank in the same pool, counting this one. */
+  pulls: number
+  /** No earlier S-rank on record in this pool, so `pulls` may undercount. */
+  partial: boolean
+  /** Limited channels only: 'won' | 'lost' | 'guaranteed'; '' elsewhere. */
+  result: '' | 'won' | 'lost' | 'guaranteed'
+  time: string
+}
+
+export interface PoolStats {
+  pool: string
+  hard_pity: number
+  total_pulls: number
+  since_last_s: number
+  since_last_a: number
+  s_count: number
+  a_count: number
+  /** Mean pulls per S-rank with a complete count; null when there are none. */
+  average_s: number | null
+  fifty_won: number
+  fifty_lost: number
+  /** The next S-rank is the featured one. */
+  guaranteed: boolean
+  polychrome: number
+}
+
+export interface PullHistory {
+  /** Newest first. */
+  s_ranks: SRankPull[]
+  pools: PoolStats[]
+  total_pulls: number
+}
+
 export type ApiErrorCode =
   | 'INVALID_COOKIES'
   | 'GAME_RECORD_DISABLED'

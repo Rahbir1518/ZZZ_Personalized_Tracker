@@ -1,4 +1,4 @@
-import { ipcMain, shell } from 'electron'
+import { app, ipcMain, shell } from 'electron'
 import { getSidecar } from './sidecar'
 import {
   listProfiles,
@@ -37,6 +37,8 @@ export function registerIpc(): void {
   ipcMain.handle('profiles:deactivate', () => {
     deactivateProfile()
   })
+
+  ipcMain.handle('app:version', () => app.getVersion())
 
   ipcMain.handle('shell:openExternal', async (_event, url: string) => {
     // Only ever open real web links, never file:// or custom schemes.

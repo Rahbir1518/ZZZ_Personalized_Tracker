@@ -15,18 +15,27 @@ import { SettingsModal } from './components/SettingsModal'
 import { SyncButton } from './components/SyncButton'
 import { CharactersTab } from './tabs/CharactersTab'
 import { DisksTab } from './tabs/DisksTab'
+import { PullsTab } from './tabs/PullsTab'
 import { TeamsTab } from './tabs/TeamsTab'
-import type { Agent, Analysis, AuthResult } from './types'
+import type { Agent, Analysis, AuthResult, PullHistory } from './types'
 import './App.css'
 
-type Tab = 'characters' | 'teams' | 'disks'
+type Tab = 'characters' | 'teams' | 'disks' | 'pulls'
 type Phase = 'starting' | 'needs-login' | 'ready' | 'sidecar-failed'
 
 const TABS: { id: Tab; label: string; code: string }[] = [
   { id: 'characters', label: 'Agents', code: 'R-01' },
   { id: 'teams', label: 'Teams', code: 'R-02' },
-  { id: 'disks', label: 'Disks', code: 'R-03' }
+  { id: 'disks', label: 'Disks', code: 'R-03' },
+  { id: 'pulls', label: 'Pulls', code: 'R-04' }
 ]
+
+const STAGE_WORD: Record<Tab, string> = {
+  characters: 'AGENTS',
+  teams: 'TEAMS',
+  disks: 'DISKS',
+  pulls: 'PULLS'
+}
 
 /**
  * The layered, low-contrast background. Purely decorative. `word` is the
@@ -57,6 +66,7 @@ export function App(): React.JSX.Element {
   const [tab, setTab] = useState<Tab>('characters')
   const [agents, setAgents] = useState<Agent[]>([])
   const [analysis, setAnalysis] = useState<Analysis | null>(null)
+  const [pulls, setPulls] = useState<PullHistory | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<ApiError | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -94,9 +104,14 @@ export function App(): React.JSX.Element {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const [nextAgents, nextAnalysis] = await Promise.all([api.agents(), api.analysis()])
+      const [nextAgents, nextAnalysis, nextPulls] = await Promise.all([
+        api.agents(),
+        api.analysis(),
+        api.pulls()
+      ])
       setAgents(nextAgents)
       setAnalysis(nextAnalysis)
+      setPulls(nextPulls)
       setError(null)
     } catch (err) {
       setError(err instanceof ApiError ? err : new ApiError('UNKNOWN', String(err)))
@@ -132,6 +147,7 @@ export function App(): React.JSX.Element {
     await window.tracker.profiles.deactivate()
     setAutoLoginFailure(null)
     setAccount(null)
+    setPulls(null)
     setAgents([])
     setAnalysis(null)
     setError(null)
@@ -230,7 +246,7 @@ export function App(): React.JSX.Element {
           <div className="brand">
             <span className="brand-mark" aria-hidden="true" />
             <span className="stage-word display" aria-hidden="true">
-              {tab === 'characters' ? 'AGENTS' : tab === 'teams' ? 'TEAMS' : 'DISKS'}
+              {STAGE_WORD[tab]}
             </span>
           </div>
 
@@ -276,6 +292,8 @@ export function App(): React.JSX.Element {
               loading={loading}
               onNavigateToSet={navigateToSet}
             />
+          ) : tab === 'pulls' ? (
+            <PullsTab pulls={pulls} agents={agents} loading={loading} />
           ) : (
             <DisksTab
               farming={analysis?.farming ?? []}

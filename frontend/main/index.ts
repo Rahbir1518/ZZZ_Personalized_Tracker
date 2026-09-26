@@ -2,6 +2,7 @@ import { join } from 'node:path'
 import { app, shell, BrowserWindow } from 'electron'
 import { startSidecar, stopSidecar } from './sidecar'
 import { registerIpc } from './ipc'
+import { registerUpdater } from './updater'
 import { logMain, logMainError } from './log'
 
 let mainWindow: BrowserWindow | null = null
@@ -94,6 +95,7 @@ if (!app.requestSingleInstanceLock()) {
   void app.whenReady().then(async () => {
     logMain(`App ready. isPackaged=${app.isPackaged} version=${app.getVersion()}`)
     registerIpc()
+    registerUpdater()
 
     try {
       const handle = await startSidecar()

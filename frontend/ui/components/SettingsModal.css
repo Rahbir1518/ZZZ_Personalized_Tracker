@@ -75,3 +75,33 @@
   font-size: 0.8rem;
   color: var(--muted);
 }
+
+.settings-section {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: var(--hair) solid var(--ink-400);
+}
+
+.settings-update {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.settings-progress {
+  height: 4px;
+  margin-top: 8px;
+  background: var(--ink-000);
+  border: var(--hair) solid var(--ink-400);
+}
+
+.settings-progress span {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+  transition: width 200ms ease;
+}
+
+.settings-note-error {
+  color: var(--alert);
+}

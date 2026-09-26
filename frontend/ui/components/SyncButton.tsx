@@ -21,6 +21,7 @@ const CELEBRATE_MS = 2600
 
 const SOURCE_LABELS: Record<string, string> = {
   account: 'Account',
+  pulls: 'Pulls',
   metadata: 'Catalog',
   guides: 'Guides'
 }

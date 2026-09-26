@@ -88,6 +88,19 @@ npm run sidecar:dev         # run the sidecar alone on :8777 with autoreload
 npm run dist                # build the Windows installer into release/
 ```
 
+### Releasing an update
+
+Settings → **Check for updates** reads this repo's latest GitHub Release. For it
+to find a new version:
+
+1. Bump the version (`npm version patch`), then `npm run dist`.
+2. Attach **all three** files from `release/` to the GitHub release:
+   `ZZZ-Team-Tracker-<version>-setup.exe`, its `.blockmap`, and `latest.yml`.
+   Without `latest.yml` the app can't see the release.
+
+The check only runs when the button is pressed and sends nothing but an
+ordinary anonymous request to GitHub.
+
 ### Signing in
 
 1. Log in at [hoyolab.com](https://www.hoyolab.com).

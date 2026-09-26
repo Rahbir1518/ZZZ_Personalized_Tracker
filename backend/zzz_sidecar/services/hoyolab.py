@@ -28,6 +28,10 @@ from ..models import (
 )
 
 
+#: genshin.py's SignalSearch.rarity -> the letter the rest of the app uses.
+_RARITY_LETTER = {4: "S", 3: "A", 2: "B"}
+
+
 class HoyolabService:
     """Holds the authenticated client for the current session."""
 
@@ -103,6 +107,42 @@ class HoyolabService:
             if biz.startswith("nap") or getattr(game, "value", "") == "nap":
                 return account
         return None
+
+    async def fetch_pulls(self, banner_type: int, after_id: int = 0) -> list[dict[str, object]]:
+        """Signal Search records for one banner, newest first, stopping at
+        ``after_id`` so a sync only pages through what is new since the last.
+
+        Uses the battle chronicle's ``gacha_record``, which works off the same
+        HoYoLAB cookies as everything else here — no in-game authkey, and
+        nothing read from the game's own files.
+        """
+        client = self._require_client()
+        if not self._uid:
+            raise RuntimeError("No ZZZ UID for this account")
+
+        rows: list[dict[str, object]] = []
+        async for pull in client.chronicle_signal_history(banner_type, uid=int(self._uid)):
+            if pull.id <= after_id:
+                break
+            rows.append(
+                {
+                    "id": pull.id,
+                    "banner_type": banner_type,
+                    "item_id": pull.item_id,
+                    "name": pull.name,
+                    "item_type": pull.type,
+                    "rank": _RARITY_LETTER.get(pull.rarity, ""),
+                    "time": pull.time.isoformat(),
+                }
+            )
+        return rows
+
+    async def fetch_bangboo_icons(self) -> dict[str, str]:
+        """Owned Bangboo name -> art. Pull records carry no art, and every
+        S-rank Bangboo pulled is one the account owns, so this covers them."""
+        client = self._require_client()
+        bangboos = await client.get_bangboos(int(self._uid) if self._uid else None)
+        return {b.name: b.icon for b in bangboos if b.name and b.icon}
 
     def logout(self) -> None:
         self._client = None

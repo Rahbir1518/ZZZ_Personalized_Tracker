@@ -428,6 +428,60 @@ class SourceState(StrEnum):
     CANCELLED = "CANCELLED"
 
 
+# --------------------------------------------------------------------------- #
+# Signal Search (pull) history
+# --------------------------------------------------------------------------- #
+
+
+class SRankPull(BaseModel):
+    """One S-rank obtained, and what it cost."""
+
+    #: HoYoLAB record id, unique per pull. Also the React key.
+    id: int
+    item_id: int
+    name: str
+    #: "agent" | "engine" | "bangboo".
+    kind: str = "agent"
+    #: Art for non-agents (agents' portraits come from the roster).
+    icon: str = ""
+    #: "exclusive" | "wengine" | "standard" | "bangboo".
+    pool: str
+    #: Pulls it took, counting this one, since the previous S-rank in the same
+    #: pool.
+    pulls: int
+    #: True when no earlier S-rank in this pool is on record, so pulls made
+    #: before the oldest stored record may be missing from ``pulls``.
+    partial: bool = False
+    #: On limited channels: "won" | "lost" | "guaranteed". Empty elsewhere.
+    result: str = ""
+    time: str
+
+
+class PoolStats(BaseModel):
+    pool: str
+    hard_pity: int = 90
+    total_pulls: int = 0
+    #: Pulls made since that pool's last S-rank / A-rank.
+    since_last_s: int = 0
+    since_last_a: int = 0
+    s_count: int = 0
+    a_count: int = 0
+    #: Mean pulls per S-rank, over S-ranks whose count is complete.
+    average_s: float | None = None
+    fifty_won: int = 0
+    fifty_lost: int = 0
+    #: The last S-rank lost its 50/50, so the next one is the featured one.
+    guaranteed: bool = False
+    polychrome: int = 0
+
+
+class PullHistory(BaseModel):
+    #: Newest first.
+    s_ranks: list[SRankPull] = Field(default_factory=list)
+    pools: list[PoolStats] = Field(default_factory=list)
+    total_pulls: int = 0
+
+
 class SourceProgress(BaseModel):
     """Per-source progress for the Sync button."""
 

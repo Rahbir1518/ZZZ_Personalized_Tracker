@@ -203,6 +203,57 @@ class Cache:
             )
         return {int(r["agent_id"]): json.loads(r["payload"]) for r in rows}
 
+    # -- signal search history ---------------------------------------------- #
+
+    def put_pulls(self, uid: str, rows: list[dict[str, Any]]) -> int:
+        """Store pull records, keeping any already stored. Returns how many
+        were new."""
+        if not rows:
+            return 0
+        with self._lock:
+            before = self._conn.total_changes
+            self._conn.executemany(
+                "INSERT OR IGNORE INTO signal_pull "
+                "(uid, id, banner_type, item_id, name, item_type, rank, time) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                [
+                    (
+                        uid,
+                        int(r["id"]),
+                        int(r["banner_type"]),
+                        int(r["item_id"]),
+                        str(r["name"]),
+                        str(r.get("item_type", "")),
+                        str(r["rank"]),
+                        str(r["time"]),
+                    )
+                    for r in rows
+                ],
+            )
+            self._conn.commit()
+            return self._conn.total_changes - before
+
+    def latest_pull_id(self, uid: str, banner_type: int) -> int:
+        """The newest stored record id for one banner, or 0 when none are."""
+        row = self._read_one(
+            "SELECT MAX(id) AS id FROM signal_pull WHERE uid = ? AND banner_type = ?",
+            (uid, banner_type),
+        )
+        return 0 if row is None or row["id"] is None else int(row["id"])
+
+    def get_pulls(self, uid: str) -> list[dict[str, Any]]:
+        """Every stored pull for a UID, oldest first.
+
+        No unknown-``uid`` fallback, unlike ``get_roster``: pull history is only
+        ever shown for an account that is actually signed in.
+        """
+        rows = self._read_all(
+            "SELECT id, banner_type, item_id, name, item_type, rank, time "
+            "FROM signal_pull WHERE uid = ? ORDER BY id",
+            (uid,),
+        )
+        return [dict(r) for r in rows]
+
     # -- sync log ----------------------------------------------------------- #
 
     def mark_sync_success(self, source: str) -> None:

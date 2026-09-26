@@ -80,3 +80,21 @@ CREATE TABLE IF NOT EXISTS codex (
     fetched_at  REAL NOT NULL,
     PRIMARY KEY (kind, key)
 );
+
+-- Signal Search records from HoYoLAB's battle chronicle, per account. Rows are
+-- only ever added, never replaced: HoYoLAB returns a recent window, so keeping
+-- everything seen on earlier syncs is what stops old pity counts from
+-- disappearing as that window moves. Local only, like the rest of this file.
+CREATE TABLE IF NOT EXISTS signal_pull (
+    uid          TEXT NOT NULL,
+    id           INTEGER NOT NULL,      -- HoYoLAB's record id; rises with time
+    banner_type  INTEGER NOT NULL,      -- genshin.ZZZBannerType value
+    item_id      INTEGER NOT NULL,
+    name         TEXT NOT NULL,
+    item_type    TEXT NOT NULL DEFAULT '',
+    rank         TEXT NOT NULL,         -- 'S' | 'A' | 'B'
+    time         TEXT NOT NULL,         -- ISO 8601, with the server's offset
+    PRIMARY KEY (uid, id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_signal_pull_uid_banner ON signal_pull (uid, banner_type, id);

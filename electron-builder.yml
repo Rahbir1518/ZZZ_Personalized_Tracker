@@ -27,7 +27,9 @@ win:
   target:
     - target: nsis
       arch: [x64]
-  artifactName: ${productName}-${version}-setup.${ext}
+  # No spaces: GitHub rewrites spaces in release asset names, which would
+  # stop the updater from finding the installer latest.yml points at.
+  artifactName: ZZZ-Team-Tracker-${version}-setup.${ext}
 
 nsis:
   oneClick: false
@@ -37,5 +39,12 @@ nsis:
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico
 
-# No auto-update: releases are downloaded manually from GitHub.
-publish: null
+# Where Settings -> "Check for updates" looks. `npm run dist` still never
+# uploads anything (--publish never); it just writes latest.yml next to the
+# installer, and both (plus the .blockmap) get attached to the GitHub release
+# by hand.
+publish:
+  provider: github
+  owner: Rahbir1518
+  repo: ZZZ_Personalized_Tracker
+  releaseType: release

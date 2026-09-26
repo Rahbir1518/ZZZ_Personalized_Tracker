@@ -1,4 +1,4 @@
-import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
+import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { createServer } from 'node:net'
 import { randomBytes } from 'node:crypto'
 import { join } from 'node:path'
@@ -203,8 +203,17 @@ export function getSidecar(): SidecarHandle | null {
 
 export function stopSidecar(): void {
   if (child === null) return
-  // SIGTERM is not meaningful on Windows; kill() maps to TerminateProcess.
-  child.kill()
+  const pid = child.pid
+  // The packaged sidecar is a PyInstaller one-file exe: a bootloader process
+  // that unpacks and then runs the real Python server as its *child*.
+  // kill() (TerminateProcess) only stops the bootloader, orphaning the server
+  // — which then holds zzz-sidecar.exe open and blocks both rebuilding it and
+  // an update's installer from replacing it. /T takes the whole tree.
+  if (process.platform === 'win32' && pid !== undefined) {
+    spawnSync('taskkill', ['/pid', String(pid), '/T', '/F'], { windowsHide: true })
+  } else {
+    child.kill()
+  }
   child = null
   handle = null
 }

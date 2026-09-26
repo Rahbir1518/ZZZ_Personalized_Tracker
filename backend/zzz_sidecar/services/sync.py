@@ -29,6 +29,7 @@ from ..models import (
     AgentBuild,
     AgentGuide,
     Analysis,
+    PullHistory,
     SourceProgress,
     SourceState,
     SyncStatus,
@@ -38,11 +39,13 @@ from ..prydwen.http import card_image_url, character_image_url
 from .analysis import _normalise, build_guide_index, find_guide, run_analysis
 from .hoyolab import HoyolabService
 from .metadata import MetadataService
+from .pulls import SIGNAL_BANNERS, build_pull_history
 
 SOURCE_ACCOUNT = "account"
 SOURCE_METADATA = "metadata"
 SOURCE_GUIDES = "guides"
-_SOURCES = (SOURCE_ACCOUNT, SOURCE_METADATA, SOURCE_GUIDES)
+SOURCE_PULLS = "pulls"
+_SOURCES = (SOURCE_ACCOUNT, SOURCE_PULLS, SOURCE_METADATA, SOURCE_GUIDES)
 
 
 class SyncService:
@@ -85,6 +88,35 @@ class SyncService:
     @property
     def analysis(self) -> Analysis:
         return self._analysis
+
+    def pull_history(self) -> PullHistory:
+        """Built from the local pull log on each call; it is a small table."""
+        if not self._hoyolab.uid:
+            return PullHistory()
+        agent_ids = {a.id for a in self._agents}
+        return build_pull_history(
+            self._cache.get_pulls(self._hoyolab.uid), agent_ids, self._item_icons()
+        )
+
+    def _item_icons(self) -> dict[str, str]:
+        """W-Engine / Bangboo name -> art, from what is already cached: the
+        account's Bangboo list (stored by the pulls sync), the engines it has
+        equipped, then every engine a guide recommends. Pull records carry no
+        art of their own."""
+        icons: dict[str, str] = {}
+        cached_bangboos = self._cache.get_codex("bangboo_icons", self._hoyolab.uid)
+        if cached_bangboos is not None:
+            for name, icon in cached_bangboos[0].items():
+                icons.setdefault(str(name).casefold(), str(icon))
+        for build in self._builds.values():
+            if build.w_engine is not None and build.w_engine.icon:
+                icons.setdefault(build.w_engine.name.casefold(), build.w_engine.icon)
+        for row in self._cache.all_guides():
+            for engine in row.get("engines", []) or []:
+                name, icon = str(engine.get("name") or ""), str(engine.get("icon") or "")
+                if name and icon:
+                    icons.setdefault(name.casefold(), icon)
+        return icons
 
     def _progress(self, source: str) -> SourceProgress:
         for entry in self._status.sources:
@@ -138,6 +170,7 @@ class SyncService:
     async def _run(self, *, force_guides: bool) -> None:
         try:
             agents = await self._sync_account()
+            await self._sync_pulls()
             catalog = await self._sync_metadata()
             self._agents = self._merge_roster(catalog, agents)
             await self._sync_guides(force=force_guides)
@@ -187,6 +220,52 @@ class SyncService:
             progress.error_code = str(api_error.code)
             progress.message = str(api_error.detail.get("message", ""))
             return self._agents_from_cache()
+
+    async def _sync_pulls(self) -> None:
+        """New Signal Search records since the last sync, added to the local
+        log. Failure only costs this source; the stored history still shows."""
+        progress = self._progress(SOURCE_PULLS)
+        progress.state = SourceState.RUNNING
+        progress.message = "Fetching Signal Search history"
+
+        if not self._hoyolab.authenticated or not self._hoyolab.uid:
+            progress.state = SourceState.SKIPPED
+            progress.message = "Not signed in"
+            return
+
+        uid = self._hoyolab.uid
+        progress.total = len(SIGNAL_BANNERS)
+        added = 0
+        try:
+            for index, banner in enumerate(SIGNAL_BANNERS, start=1):
+                if self._cancel.is_set():
+                    progress.state = SourceState.CANCELLED
+                    return
+                rows = await self._hoyolab.fetch_pulls(
+                    banner, after_id=self._cache.latest_pull_id(uid, banner)
+                )
+                added += self._cache.put_pulls(uid, rows)
+                progress.done = index
+
+            # Bangboo art for the Pulls tab. Cosmetic: a failure here keeps
+            # whatever was stored last time and does not fail the source.
+            try:
+                self._cache.put_codex(
+                    "bangboo_icons", uid, "", await self._hoyolab.fetch_bangboo_icons()
+                )
+            except Exception:  # noqa: BLE001 - cards fall back to initials
+                pass
+
+            progress.state = SourceState.OK
+            progress.message = f"{added} new pulls"
+            self._cache.mark_sync_success(SOURCE_PULLS)
+        except Exception as exc:  # noqa: BLE001 - reported, never fatal
+            from ..errors import translate
+
+            api_error = translate(exc)
+            progress.state = SourceState.FAILED
+            progress.error_code = str(api_error.code)
+            progress.message = str(api_error.detail.get("message", ""))
 
     def _agents_from_cache(self) -> list[Agent]:
         # Do not skip the lookup when the UID is empty: at process startup,

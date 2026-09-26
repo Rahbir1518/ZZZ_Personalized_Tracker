@@ -27,7 +27,7 @@ from fastapi.responses import JSONResponse
 
 from .config import get_settings
 from .deps import get_sync
-from .routers import auth, codex, health, roster, sync, teams
+from .routers import auth, codex, health, pulls, roster, sync, teams
 
 #: Reachable without a token, so the supervisor can poll before handing the
 #: token to the renderer.
@@ -87,5 +87,6 @@ def create_app() -> FastAPI:
     app.include_router(roster.router)
     app.include_router(teams.router)
     app.include_router(codex.router)
+    app.include_router(pulls.router)
 
     return app
